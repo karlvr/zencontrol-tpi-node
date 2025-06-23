@@ -1,0 +1,8 @@
+/.vscode
+/node_modules
+/src
+/.gitignore
+/.nvmrc
+/eslint.config.js
+/pnpm-lock.yaml
+/tsconfig.json

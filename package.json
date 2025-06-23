@@ -1,0 +1,32 @@
+{
+	"name": "zencontrol-tpi-node",
+	"version": "0.0.1",
+	"description": "",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"engines": {
+		"node": "^22.10.0"
+	},
+	"scripts": {
+		"build": "tsc",
+		"clean": "rm -rf dist",
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"watch": "tsc --watch"
+	},
+	"keywords": [
+		"zencontrol",
+		"dali",
+		"tpi"
+	],
+	"author": "Karl von Randow",
+	"license": "Apache-2.0",
+	"packageManager": "pnpm@10.9.0",
+	"devDependencies": {
+		"@eslint/js": "^9.27.0",
+		"@types/node": "^24.0.3",
+		"eslint": "^9.27.0",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.32.1"
+	}
+}
