@@ -1,4 +1,4 @@
-import { Const } from './zen-const.js'
+import { ZenConst } from './zen-const.js'
 
 export enum ZenColourType {
 	XY = 0x10,
@@ -78,8 +78,8 @@ export class ZenColour {
 	}
 
 	_postInit() {
-		if (this.type === ZenColourType.TC && (this.kelvin! < Const.MIN_KELVIN || this.kelvin! > Const.MAX_KELVIN)) {
-			throw new Error(`Kelvin must be between ${Const.MIN_KELVIN} and ${Const.MAX_KELVIN}`)
+		if (this.type === ZenColourType.TC && (this.kelvin! < ZenConst.MIN_KELVIN || this.kelvin! > ZenConst.MAX_KELVIN)) {
+			throw new Error(`Kelvin must be between ${ZenConst.MIN_KELVIN} and ${ZenConst.MAX_KELVIN}`)
 		}
 		if (this.type === ZenColourType.RGBWAF) {
 			for (const [channel, value] of Object.entries({ r: this.r, g: this.g, b: this.b, w: this.w, a: this.a, f: this.f })) {

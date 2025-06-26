@@ -1,4 +1,4 @@
-export const Const = {
+export const ZenConst = {
 	// UDP protocol
 	MAGIC_BYTE: 0x04,
 	RESPONSE_TIMEOUT: 1000, // In rare circumstances 0.5 seconds can be too short. 1 second is sufficient. Any longer is a cure worse than the disease

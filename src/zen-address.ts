@@ -1,4 +1,4 @@
-import { Const } from './zen-const.js'
+import { ZenConst } from './zen-const.js'
 import { ZenController } from './zen-controller.js'
 
 export enum ZenAddressType {
@@ -101,18 +101,18 @@ export class ZenAddress {
 			this.target = 255
 			break
 		case ZenAddressType.ECG:
-			if (this.target < 0 || this.target >= Const.MAX_ECG) {
-				throw new Error(`Control Gear address must be between 0 and ${Const.MAX_ECG-1}, received ${this.target}`)
+			if (this.target < 0 || this.target >= ZenConst.MAX_ECG) {
+				throw new Error(`Control Gear address must be between 0 and ${ZenConst.MAX_ECG-1}, received ${this.target}`)
 			}
 			break
 		case ZenAddressType.ECD:
-			if (this.target < 0 || this.target >= Const.MAX_ECD) {
-				throw new Error(`Control Device address must be between 0 and ${Const.MAX_ECD-1}, received ${this.target}`)
+			if (this.target < 0 || this.target >= ZenConst.MAX_ECD) {
+				throw new Error(`Control Device address must be between 0 and ${ZenConst.MAX_ECD-1}, received ${this.target}`)
 			}
 			break
 		case ZenAddressType.GROUP:
-			if (this.target < 0 || this.target >= Const.MAX_GROUP) {
-				throw new Error(`Group number must be between 0 and ${Const.MAX_GROUP-1}, received ${this.target}`)
+			if (this.target < 0 || this.target >= ZenConst.MAX_GROUP) {
+				throw new Error(`Group number must be between 0 and ${ZenConst.MAX_GROUP-1}, received ${this.target}`)
 			}
 			break
 		}

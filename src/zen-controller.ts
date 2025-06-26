@@ -1,4 +1,4 @@
-import { Const } from './zen-const.js'
+import { ZenConst } from './zen-const.js'
 
 export class ZenController {
 	host: string
@@ -9,7 +9,7 @@ export class ZenController {
 	constructor(options: { host: string, id: number, port?: number, macAddress?: string }) {
 		this.host = options.host
 		this.id = options.id
-		this.port = options.port ?? Const.DEFAULT_UNICAST_PORT
+		this.port = options.port ?? ZenConst.DEFAULT_UNICAST_PORT
 		this.macAddress = options.macAddress
 	}
 }

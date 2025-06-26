@@ -1,5 +1,5 @@
 import { ZenAddress } from './zen-address.js'
-import { Const } from './zen-const.js'
+import { ZenConst } from './zen-const.js'
 
 export enum ZenInstanceType {
 	/** Push button - generates short/long press events */
@@ -27,7 +27,7 @@ export class ZenInstance {
 	}
 
 	validate(): void {
-		if (this.instance < 0 || this.instance >= Const.MAX_INSTANCE) {
+		if (this.instance < 0 || this.instance >= ZenConst.MAX_INSTANCE) {
 			throw new Error(`Instance out of range: ${this.instance}`)
 		}
 	}

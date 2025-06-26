@@ -7,7 +7,7 @@ import { ZenController } from './zen-controller.js'
 import { ZenInstance, ZenInstanceType } from './zen-instance.js'
 import { ZenAddress, ZenAddressType } from './zen-address.js'
 import { ZenColour } from './zen-colour.js'
-import { Const } from './zen-const.js'
+import { ZenConst } from './zen-const.js'
 import { ZenEventMode, ZenEventType } from './zen-events.js'
 
 export interface ZenProtocolOptions {
@@ -80,11 +80,11 @@ export class ZenProtocol {
 	constructor(opts: ZenProtocolOptions = {}) {
 		this.unicast = opts.unicast ?? false
 		this.listenIp = this.unicast ? opts.listenIp ?? '0.0.0.0' : undefined
-		this.listenPort = this.unicast ? opts.listenPort ?? Const.DEFAULT_UNICAST_PORT : undefined
-		this.responseTimeout = opts.responseTimeout ?? Const.RESPONSE_TIMEOUT
+		this.listenPort = this.unicast ? opts.listenPort ?? ZenConst.DEFAULT_UNICAST_PORT : undefined
+		this.responseTimeout = opts.responseTimeout ?? ZenConst.RESPONSE_TIMEOUT
 		this.controllers = opts.controllers || []
-		this.maxRequestsPerController = opts.maxRequestsPerController || Const.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
-		this.maxRetries = opts.maxRetries ?? Const.DEFAULT_MAX_RETRIES
+		this.maxRequestsPerController = opts.maxRequestsPerController || ZenConst.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
+		this.maxRetries = opts.maxRetries ?? ZenConst.DEFAULT_MAX_RETRIES
 
 		// If unicast, and we're binding to 0.0.0.0, we still need to know our actual IP address
 		if (this.unicast) {
@@ -213,7 +213,7 @@ export class ZenProtocol {
 		}
 
 		return new Promise<ZenResponse>((resolve, reject) => {
-			const payload = [Const.MAGIC_BYTE, seq, commandCode, ...data]
+			const payload = [ZenConst.MAGIC_BYTE, seq, commandCode, ...data]
 			const checksum = this.checksum(payload)
 			const packet = Buffer.from([...payload, checksum])
 
@@ -538,7 +538,7 @@ export class ZenProtocol {
 	}
 
 	/** Configure TPI Events for Unicast mode with IP and port as defined in the ZenController instance. */
-	async setTpiEventUnicastAddress(controller: ZenController, ipaddr?: string, port: number = Const.DEFAULT_UNICAST_PORT): Promise<boolean | null> {
+	async setTpiEventUnicastAddress(controller: ZenController, ipaddr?: string, port: number = ZenConst.DEFAULT_UNICAST_PORT): Promise<boolean | null> {
 		if (ipaddr !== undefined) {
 			if (port < 0 || port > 65535) {
 				throw new Error('Port must be between 0 and 65535')
@@ -891,8 +891,8 @@ export class ZenProtocol {
 
 	/** Send DIRECT ARC level (0-254) to an address (ECG or group or broadcast). Will fade to the new level. Returns `true` if acknowledged, else `false`. */
 	async daliArcLevel(address: ZenAddress, level: number): Promise<boolean> {
-		if (level < 0 || level > Const.MAX_LEVEL) {
-			throw new Error(`Level must be between 0 and ${Const.MAX_LEVEL}, got ${level}`)
+		if (level < 0 || level > ZenConst.MAX_LEVEL) {
+			throw new Error(`Level must be between 0 and ${ZenConst.MAX_LEVEL}, got ${level}`)
 		}
 		return !!await this.sendBasicFrame(address.controller, 'DALI_ARC_LEVEL', address.ecgOrGroupOrBroadcast(), [0x00, 0x00, level], 'ok')
 	}
@@ -1346,8 +1346,8 @@ export class ZenProtocol {
 			for (const controller of this.controllers) {
 				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
 			}
-			socket.bind(Const.MULTICAST_PORT, () => {
-				socket.addMembership(Const.MULTICAST_GROUP)
+			socket.bind(ZenConst.MULTICAST_PORT, () => {
+				socket.addMembership(ZenConst.MULTICAST_GROUP)
 			})
 		}
 		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => this._handleEventPacket(msg, rinfo))
@@ -1465,7 +1465,7 @@ export class ZenProtocol {
 		case ZenEventType.SYSTEM_VARIABLE_CHANGED_EVENT:
 			// System Variable Change - A system variable has changed
 			if (this.systemVariableChangeCallback) {
-				if (target < 0 || target > Const.MAX_SYSVAR) {
+				if (target < 0 || target > ZenConst.MAX_SYSVAR) {
 					warn(`Invalid system variable change event from ${rinfo.address}:${rinfo.port}: ${target}`)
 				} else {
 					const rawValue = (payload[0] & 0xff) << 24 | (payload[1] & 0xff) << 16 | (payload[2] & 0xff) << 8 | (payload[3] & 0xff)
