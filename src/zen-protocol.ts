@@ -2,7 +2,7 @@ import dgram, { RemoteInfo } from 'node:dgram'
 import os from 'node:os'
 import { log, warn } from 'node:console'
 import { CMD, ZenCommand } from './zen-commands.js'
-import { ZenError, ZenErrorCode, ZenResponseError } from './zen-errors.js'
+import { ZenError, ZenErrorCode, ZenResponseError, ZenTimeoutError } from './zen-errors.js'
 import { ZenController } from './zen-controller.js'
 import { ZenInstance, ZenInstanceType } from './zen-instance.js'
 import { ZenAddress, ZenAddressType } from './zen-address.js'
@@ -16,6 +16,8 @@ export interface ZenProtocolOptions {
 	listenPort?: number
 	responseTimeout?: number
 	controllers?: ZenController[]
+	maxRequestsPerController?: number
+	maxRetries?: number
 }
 
 enum ZenResponseCode {
@@ -33,9 +35,14 @@ interface ZenResponse {
 interface ZenRequestPromise {
 	resolve: (response: ZenResponse) => void
 	reject: (error: ZenError) => void
-	waiting: (() => void)[]
-	retries: number
+	controller: ZenController
 	timeout?: NodeJS.Timeout
+}
+
+async function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms)
+	})
 }
 
 export class ZenProtocol {
@@ -44,12 +51,17 @@ export class ZenProtocol {
 	private listenPort?: number
 	private responseTimeout: number
 
-	private sequenceCounter = 0
+	private nextSeq = 0
 	private commandSocket: dgram.Socket
 	private eventSocket: dgram.Socket | null = null
 
 	/** Used to match events to controllers, and include controller objects in callbacks */
 	public controllers: ZenController[]
+	public maxRequestsPerController: number
+	public maxRetries: number
+
+	private waiting: Record<number, (() => void)[]> = {}
+	private activeRequests: Record<number, number> = {}
 
 	public buttonPressCallback?: (instance: ZenInstance) => void
 	public buttonHoldCallback?: (instance: ZenInstance) => void
@@ -71,6 +83,8 @@ export class ZenProtocol {
 		this.listenPort = this.unicast ? opts.listenPort ?? Const.DEFAULT_UNICAST_PORT : undefined
 		this.responseTimeout = opts.responseTimeout ?? Const.RESPONSE_TIMEOUT
 		this.controllers = opts.controllers || []
+		this.maxRequestsPerController = opts.maxRequestsPerController || Const.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
+		this.maxRetries = opts.maxRetries ?? Const.DEFAULT_MAX_RETRIES
 
 		// If unicast, and we're binding to 0.0.0.0, we still need to know our actual IP address
 		if (this.unicast) {
@@ -78,7 +92,7 @@ export class ZenProtocol {
 		}
 
 		this.commandSocket = dgram.createSocket('udp4')
-		const onMessage = (msg: Buffer, rinfo: RemoteInfo) => {
+		this.commandSocket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
 			if (msg.length < 4) {
 				warn(`Received invalid message: too short from ${rinfo.address}:${rinfo.port}`)
 				return
@@ -94,8 +108,14 @@ export class ZenProtocol {
 				return
 			}
 
-			this.finish(seq)
-			
+			delete this.requestsBySeq[seq]
+
+			if (request.timeout) {
+				clearTimeout(request.timeout)
+			}
+
+			this.finishActiveRequest(request.controller)
+
 			const responseChecksum = msg[msg.length - 1]
 			const expectedChecksum = this.checksumBuffer(msg.subarray(0, msg.length - 1))
 			if (responseChecksum !== expectedChecksum) {
@@ -116,21 +136,17 @@ export class ZenProtocol {
 			} else {
 				request.resolve({ responseCode, data: Buffer.of() })
 			}
-		}
-
-		this.commandSocket.on('message', onMessage)
+		})
 	}
 
-	private finish(seq: number) {
-		const timeout = this.requestsBySeq[seq].timeout
-		if (timeout) {
-			clearTimeout(timeout)
+	private finishActiveRequest(controller: ZenController): void {
+		this.activeRequests[controller.id]--
+
+		const waitingFunc = this.waiting[controller.id]?.shift()
+		if (waitingFunc) {
+			/* Wait up one waiting request */
+			waitingFunc()
 		}
-
-		const waiting = this.requestsBySeq[seq].waiting
-		delete this.requestsBySeq[seq]
-
-		waiting.forEach(resolve => resolve())
 	}
 
 	private resolveLocalIp(): string {
@@ -158,12 +174,42 @@ export class ZenProtocol {
 	async sendPacket(controller: ZenController, command: ZenCommand, data: number[]): Promise<ZenResponse> {
 		const commandCode = CMD[command]
 
-		const seq = this.sequenceCounter = (this.sequenceCounter + 1) & 0x07 // Limit our sequence number range to limit the number of inflight requests
+		const activeRequests = this.activeRequests[controller.id]
+		if (activeRequests === undefined) {
+			this.activeRequests[controller.id] = 0
+		}
 
-		while (this.requestsBySeq[seq]) {
+		if (activeRequests >= this.maxRequestsPerController) {
+			/* Wait for another request to finish */
 			await new Promise<void>((resolve) => {
-				this.requestsBySeq[seq].waiting.push(resolve)
+				if (!this.waiting[controller.id]) {
+					this.waiting[controller.id] = []
+				}
+				this.waiting[controller.id].push(resolve)
 			})
+		}
+		
+		this.activeRequests[controller.id]++
+
+		let seq = this.nextSeq++ % 256
+		let seqLoops = 0
+		const originalSeq = seq
+		
+		while (this.requestsBySeq[seq]) {
+			seq = (seq + 1) % 256
+			if (seq === originalSeq) {
+				seqLoops++
+
+				/* We've looped looking for a free sequence number */
+				if (seqLoops < 4) {
+					warn('No free sequence numbers for message. Waiting for a sequence number.')
+					await delay(Math.pow(10, seqLoops))
+				} else {
+					warn('Failed to find a free sequence number for message.')
+					this.finishActiveRequest(controller)
+					throw new ZenTimeoutError('Failed to find a free sequence number for message.')
+				}
+			}
 		}
 
 		return new Promise<ZenResponse>((resolve, reject) => {
@@ -174,21 +220,32 @@ export class ZenProtocol {
 			const req: ZenRequestPromise = {
 				resolve,
 				reject,
-				waiting: [],
-				retries: 0,
+				controller,
 			}
 			this.requestsBySeq[seq] = req
 
+			let retries = 0
+
 			const handleSend = (err: Error | null) => {
 				if (err) {
-					warn(`Failed to send message to ${controller.host}:${controller.port}: ${packet}`, err)
+					warn(`Failed to send message to ${controller.host}:${controller.port}`, err)
+
+					delete this.requestsBySeq[seq]
+					this.finishActiveRequest(controller)
 					reject(err)
 				} else {
 					const timeout = () => {
-						req.retries++
-						log('RETRYING', seq, req.retries)
+						retries++
 
-						this.commandSocket.send(packet, 0, packet.length, controller.port, controller.host, handleSend)
+						if (retries >= this.maxRetries) {
+							warn(`Failed to send message to ${controller.host}:${controller.port}: too many retries (${retries})`)
+
+							delete this.requestsBySeq[seq]
+							this.finishActiveRequest(controller)
+							reject(new ZenTimeoutError(`Failed to send message to ${controller.host}:${controller.port}: too many retries (${retries})`))
+						} else {
+							this.commandSocket.send(packet, 0, packet.length, controller.port, controller.host, handleSend)
+						}
 					}
 
 					req.timeout = setTimeout(timeout, this.responseTimeout)

@@ -2,6 +2,8 @@ export const Const = {
 	// UDP protocol
 	MAGIC_BYTE: 0x04,
 	RESPONSE_TIMEOUT: 1000, // In rare circumstances 0.5 seconds can be too short. 1 second is sufficient. Any longer is a cure worse than the disease
+	DEFAULT_MAX_REQUESTS_PER_CONTROLLER: 8,
+	DEFAULT_MAX_RETRIES: 5,
 
 	// DALI limits
 	MAX_ECG: 64, // 0-63
