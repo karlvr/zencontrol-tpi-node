@@ -1004,20 +1004,18 @@ export class ZenProtocol {
 	//     """Query a DALI address (ECG) if a fade is currently running. Returns `true` if a fade is currently running, False if not, None if query fails."""
 	//     return self._send_basic(address.controller, self.CMD["DALI_QUERY_FADE_RUNNING"], address.ecg(), return_type='bool')
 
-	// def dali_enable_dapc_sequence(self, address: ZenAddress) -> Optional[bool]:
-	//     """Begin a DALI Direct Arc Power Control (DAPC) Sequence.
-    
-	//     DAPC allows overriding of the fade rate for immediate level setting. The sequence
-	//     continues for 250ms. If no arc levels are received within 250ms, the sequence ends
-	//     and normal fade rates resume.
-    
-	//     Args:
-	//         address: ZenAddress instance (ECG address)
-        
-	//     Returns:
-	//         Optional[bool]: True if successful, False if failed, None if no response
-	//     """
-	//     return self._send_basic(address.controller, self.CMD["DALI_ENABLE_DAPC_SEQ"], address.ecg(), return_type='bool')
+	/**
+	 * Begin a DALI Direct Arc Power Control (DAPC) Sequence.
+	 * 
+	 * DAPC allows overriding of the fade rate for immediate level setting. The sequence
+	 * continues for 250ms. If no arc levels are received within 250ms, the sequence ends
+	 * and normal fade rates resume.
+	 * 
+	 * Returns `true` if successful, `false` if failed, or `null` if an error occurs
+	 */
+	async daliEnableDAPCSequence(address: ZenAddress): Promise<boolean | null> {
+		return this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
+	}
 
 	// def query_dali_ean(self, address: ZenAddress) -> Optional[int]:
 	//     """Query a DALI address (ECG or ECD) for its European Article Number (EAN/GTIN). Returns an integer if successful, None if query fails."""
