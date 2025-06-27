@@ -826,21 +826,30 @@ export class ZenProtocol {
 	//             ))
 	//     return zen_addresses
 
-	// def query_scene_numbers_for_group(self, address: ZenAddress) -> list[int]:
-	//     """Query which DALI scenes are associated with a given group number. Returns list of scene numbers."""
-	//     response = self._send_basic(address.controller, self.CMD["QUERY_SCENE_NUMBERS_FOR_GROUP"], address.group(), cacheable=True)
-	//     if response and len(response) == 2:
-	//         scenes = []
-	//         # Process high byte (scenes 8-15)
-	//         for i in range(8):
-	//             if response[0] & (1 << i):
-	//                 scenes.append(i + 8)
-	//         # Process low byte (scenes 0-7)
-	//         for i in range(8):
-	//             if response[1] & (1 << i):
-	//                 scenes.append(i)
-	//         return sorted(scenes)
-	//     return []
+	/** Query which DALI scenes are associated with a given group number. Returns list of scene numbers. */
+	async querySceneNumbersForGroup(group: ZenAddress): Promise<number[] | null> {
+		const response = await this.sendBasicFrame(group.controller, 'QUERY_SCENE_NUMBERS_FOR_GROUP', group.group(), [], 'bytes')
+		if (!response || response.length !== 2) {
+			return null
+		}
+
+		const scenes: number[] = []
+		
+		// Process high byte (scenes 8-15)
+		for (let i = 0; i < 8; i++) {
+			if (response[0] & (1 << i)) {
+				scenes.push(i + 8)
+			}
+		}
+		// Process low byte (scenes 0-7)
+		for (let i = 0; i < 8; i++) {
+			if (response[1] & (1 << i)) {
+				scenes.push(i)
+			}
+		}
+
+		return scenes.sort()
+	}
 
 	// def query_scene_label_for_group(self, address: ZenAddress, scene: int, generic_if_none: bool=False) -> Optional[str]:
 	//     """Query the label for a scene (0-11) and group number combination. Returns string, or None if no label is set."""
