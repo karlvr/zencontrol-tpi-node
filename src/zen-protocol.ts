@@ -858,12 +858,15 @@ export class ZenProtocol {
 	//         scenes[scene] = self.query_scene_label_for_group(address, scene, generic_if_none=generic_if_none)
 	//     return scenes
 
-	// def query_controller_version_number(self, controller: ZenController) -> Optional[str]:
-	//     """Query the controller's version number. Returns string, or None if query fail s."""
-	//     response = self._send_basic(controller, self.CMD["QUERY_CONTROLLER_VERSION_NUMBER"])
-	//     if response and len(response) == 3:
-	//         return f"{response[0]}.{response[1]}.{response[2]}"
-	//     return None
+	/** Query the controller's version number. Returns string, or None if query fails. */
+	async queryControllerVersionNumber(controller: ZenController): Promise<string | null> {
+		const response = await this.sendBasicFrame(controller, 'QUERY_CONTROLLER_VERSION_NUMBER', 0, [], 'bytes')
+		if (response && response.length === 3) {
+			return `${response[0]}.${response[1]}.${response[2]}`
+		} else {
+			return null
+		}
+	}
 
 	/** Query which DALI control gear addresses are present in the database. Returns a list of ZenAddress instances. */
 	async queryControlGearDaliAddresses(controller: ZenController): Promise<ZenAddress[] | null> {
