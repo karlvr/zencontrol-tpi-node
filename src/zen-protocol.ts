@@ -851,13 +851,21 @@ export class ZenProtocol {
 		return scenes.sort()
 	}
 
-	// def query_scene_label_for_group(self, address: ZenAddress, scene: int, generic_if_none: bool=False) -> Optional[str]:
-	//     """Query the label for a scene (0-11) and group number combination. Returns string, or None if no label is set."""
-	//     if not 0 <= scene < Const.MAX_SCENE: raise ValueError("Scene must be between 0 and 11")
-	//     label = self._send_basic(address.controller, self.CMD["QUERY_SCENE_LABEL_FOR_GROUP"], address.group(), [scene], return_type='str', cacheable=True)
-	//     if label is None and generic_if_none:
-	//         return f"Scene {scene}"
-	//     return label
+	/** Query the label for a scene (0-11) and group number combination. Returns string, or `null` if no label is set. */
+	async querySceneLabelForGroup(group: ZenAddress, scene: number, genericIfNone = false): Promise<string | null> {
+		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
+			throw new Error(`Scene must be between 0 and ${ZenConst.MAX_SCENE}`)
+		}
+
+		const label = await this.sendBasicFrame(group.controller, 'QUERY_SCENE_LABEL_FOR_GROUP', group.group(), [scene], 'str')
+		if (label) {
+			return label
+		} else if (genericIfNone) {
+			return `Scene ${scene}`
+		} else {
+			return null
+		}
+	}
 
 	// def query_scenes_for_group(self, address: ZenAddress, generic_if_none: bool=False) -> list[Optional[str]]:
 	//     """Compound command to query the labels for all scenes for a group. Returns list of scene labels, where None indicates no label is set."""
