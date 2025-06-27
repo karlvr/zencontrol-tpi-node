@@ -918,11 +918,12 @@ export class ZenProtocol {
 		return addresses
 	}
 
-	// def dali_inhibit(self, address: ZenAddress, time_seconds: int) -> bool:
-	//     """Inhibit sensors from changing a DALI address (ECG or group or broadcast) for specified time in seconds (0-65535). Returns `true` if acknowledged, else `false`."""
-	//     time_hi = (time_seconds >> 8) & 0xFF  # Convert time to 16-bit value
-	//     time_lo = time_seconds & 0xFF
-	//     return self._send_basic(address.controller, self.CMD["DALI_INHIBIT"], address.ecg_or_group_or_broadcast(), [0x00, time_hi, time_lo], return_type='ok')
+	/** Inhibit sensors from changing a DALI address (ECG or group or broadcast) for specified time in seconds (0-65535). Returns `true` if acknowledged, else `false`. */
+	async daliInhibit(address: ZenAddress, timeSeconds: number): Promise<boolean | null> {
+		const timeHi = (timeSeconds >> 8) & 0xff // Convert time to 16-bit value
+		const timeLo = (timeSeconds & 0xff)
+		return await this.sendBasicFrame(address.controller, 'DALI_INHIBIT', address.ecgOrGroupOrBroadcast(), [0x00, timeHi, timeLo], 'ok')
+	}
 
 	/** Send RECALL SCENE (0-11) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`. */
 	async daliScene(address: ZenAddress, scene: number): Promise<boolean | null> {
