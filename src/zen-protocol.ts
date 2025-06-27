@@ -865,27 +865,30 @@ export class ZenProtocol {
 	//         return f"{response[0]}.{response[1]}.{response[2]}"
 	//     return None
 
-	// def query_control_gear_dali_addresses(self, controller: ZenController) -> list[ZenAddress]:
-	//     """Query which DALI control gear addresses are present in the database. Returns a list of ZenAddress instances."""
-	//     response = self._send_basic(controller, self.CMD["QUERY_CONTROL_GEAR_DALI_ADDRESSES"])
-	//     if response and len(response) == 8:
-	//         addresses = []
-	//         # Process each byte which represents 8 addresses
-	//         for byte_index, byte_value in enumerate(response):
-	//             # Check each bit in the byte
-	//             for bit_index in range(8):
-	//                 if byte_value & (1 << bit_index):
-	//                     # Calculate actual address from byte and bit position
-	//                     number = byte_index * 8 + bit_index
-	//                     addresses.append(
-	//                         ZenAddress(
-	//                             controller=controller,
-	//                             type=ZenAddressType.ECG,
-	//                             number=number
-	//                         )
-	//                     )
-	//         return addresses
-	//     return []
+	/** Query which DALI control gear addresses are present in the database. Returns a list of ZenAddress instances. */
+	async queryControlGearDaliAddresses(controller: ZenController): Promise<ZenAddress[] | null> {
+		const response = await this.sendBasicFrame(controller, 'QUERY_CONTROL_GEAR_DALI_ADDRESSES', 0, [], 'bytes')
+		if (!response || response.length !== 8) {
+			return null
+		}
+
+		const addresses: ZenAddress[] = []
+
+		// Process each byte which represents 8 addresses
+		for (let index = 0; index < response.length; index++) {
+			const byteValue = response[index]
+
+			// Check each bit in the byte
+			for (let i = 0; i < 8; i++) {
+				if (byteValue & (1 << i)) {
+					// Calculate actual address from byte and bit position
+					addresses.push(new ZenAddress(controller, ZenAddressType.ECG, index * 8 + i))
+				}
+			}
+		}
+
+		return addresses
+	}
 
 	// def dali_inhibit(self, address: ZenAddress, time_seconds: int) -> bool:
 	//     """Inhibit sensors from changing a DALI address (ECG or group or broadcast) for specified time in seconds (0-65535). Returns `true` if acknowledged, else `false`."""
