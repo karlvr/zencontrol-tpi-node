@@ -924,10 +924,14 @@ export class ZenProtocol {
 	//     time_lo = time_seconds & 0xFF
 	//     return self._send_basic(address.controller, self.CMD["DALI_INHIBIT"], address.ecg_or_group_or_broadcast(), [0x00, time_hi, time_lo], return_type='ok')
 
-	// def dali_scene(self, address: ZenAddress, scene: int) -> bool:
-	//     """Send RECALL SCENE (0-11) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`."""
-	//     if not 0 <= scene < Const.MAX_SCENE: raise ValueError(f"Scene number must be between 0 and {Const.MAX_SCENE}, got {scene}")
-	//     return self._send_basic(address.controller, self.CMD["DALI_SCENE"], address.ecg_or_group_or_broadcast(), [0x00, 0x00, scene], return_type='ok')
+	/** Send RECALL SCENE (0-11) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`. */
+	async daliScene(address: ZenAddress, scene: number): Promise<boolean | null> {
+		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
+			throw new Error(`Scene must be between 0 and ${ZenConst.MAX_SCENE}`)
+		}
+
+		return await this.sendBasicFrame(address.controller, 'DALI_SCENE', address.ecgOrGroupOrBroadcast(), [0x00, 0x00, scene], 'ok')
+	}
 
 	/** Send DIRECT ARC level (0-254) to an address (ECG or group or broadcast). Will fade to the new level. Returns `true` if acknowledged, else `false`. */
 	async daliArcLevel(address: ZenAddress, level: number): Promise<boolean> {
