@@ -919,19 +919,19 @@ export class ZenProtocol {
 	}
 
 	/** Inhibit sensors from changing a DALI address (ECG or group or broadcast) for specified time in seconds (0-65535). Returns `true` if acknowledged, else `false`. */
-	async daliInhibit(address: ZenAddress, timeSeconds: number): Promise<boolean | null> {
+	async daliInhibit(address: ZenAddress, timeSeconds: number): Promise<boolean> {
 		const timeHi = (timeSeconds >> 8) & 0xff // Convert time to 16-bit value
 		const timeLo = (timeSeconds & 0xff)
-		return await this.sendBasicFrame(address.controller, 'DALI_INHIBIT', address.ecgOrGroupOrBroadcast(), [0x00, timeHi, timeLo], 'ok')
+		return !!await this.sendBasicFrame(address.controller, 'DALI_INHIBIT', address.ecgOrGroupOrBroadcast(), [0x00, timeHi, timeLo], 'ok')
 	}
 
 	/** Send RECALL SCENE (0-11) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`. */
-	async daliScene(address: ZenAddress, scene: number): Promise<boolean | null> {
+	async daliScene(address: ZenAddress, scene: number): Promise<boolean> {
 		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
 			throw new Error(`Scene must be between 0 and ${ZenConst.MAX_SCENE}`)
 		}
 
-		return await this.sendBasicFrame(address.controller, 'DALI_SCENE', address.ecgOrGroupOrBroadcast(), [0x00, 0x00, scene], 'ok')
+		return !!await this.sendBasicFrame(address.controller, 'DALI_SCENE', address.ecgOrGroupOrBroadcast(), [0x00, 0x00, scene], 'ok')
 	}
 
 	/** Send DIRECT ARC level (0-254) to an address (ECG or group or broadcast). Will fade to the new level. Returns `true` if acknowledged, else `false`. */
