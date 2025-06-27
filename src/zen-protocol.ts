@@ -773,31 +773,32 @@ export class ZenProtocol {
 	//         offset = i*7
 	//         output[i] = ZenColour.from_bytes(response[offset:offset+7])
 	//     return output
-        
-	// def query_group_membership_by_address(self, address: ZenAddress) -> list[ZenAddress]:
-	//     """Query an address (ECG) for which DALI groups it belongs to. Returns a list of ZenAddress group instances."""
-	//     response = self._send_basic(address.controller, self.CMD["QUERY_GROUP_MEMBERSHIP_BY_ADDRESS"], address.ecg())
-	//     if response and len(response) == 2:
-	//         groups = []
-	//         # Process high byte (groups 8-15)
-	//         for i in range(8):
-	//             if response[0] & (1 << i):
-	//                 groups.append(i + 8)
-	//         # Process low byte (groups 0-7)  
-	//         for i in range(8):
-	//             if response[1] & (1 << i):
-	//                 groups.append(i)
-	//         # Process into ZenAddress instances
-	//         groups.sort()
-	//         zen_groups = []
-	//         for number in groups:
-	//             zen_groups.append(ZenAddress(
-	//                 controller=address.controller,
-	//                 type=ZenAddressType.GROUP,
-	//                 number=number
-	//             ))
-	//         return zen_groups
-	//     return []
+
+	/** Query an address (ECG) for which DALI groups it belongs to. Returns a list of ZenAddress group instances. */
+	async queryGroupMembershipByAddress(address: ZenAddress): Promise<ZenAddress[] | null> {
+		const response = await this.sendBasicFrame(address.controller, 'QUERY_GROUP_MEMBERSHIP_BY_ADDRESS', address.ecg(), [], 'bytes')
+		if (!response || response.length !== 2) {
+			return null
+		}
+
+		const groups: number[] = []
+
+		// Process high byte (groups 8-15)
+		for (let i = 0; i < 8; i++) {
+			if (response[0] & (1 << i)) {
+				groups.push(i + 8)
+			}
+		}
+		// Process low byte (groups 0-7)
+		for (let i = 0; i < 8; i++) {
+			if (response[1] & (1 << i)) {
+				groups.push(i)
+			}
+		}
+
+		// Process into ZenAddress instances
+		return groups.sort().map(group => new ZenAddress(address.controller, ZenAddressType.GROUP, group))
+	}
 
 	// def query_dali_addresses_with_instances(self, controller: ZenController, start_address: int=0) -> list[ZenAddress]: # TODO: automate iteration over start_address=0, start_address=60, etc.
 	//     """Query for DALI addresses that have instances associated with them.
