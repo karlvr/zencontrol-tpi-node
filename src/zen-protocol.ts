@@ -9,6 +9,7 @@ import { ZenAddress, ZenAddressType } from './zen-address.js'
 import { ZenColour } from './zen-colour.js'
 import { ZenConst } from './zen-const.js'
 import { ZenEventMode, ZenEventType } from './zen-events.js'
+import { ZenScene } from './zen-scene.js'
 
 export interface ZenProtocolOptions {
 	unicast?: boolean
@@ -867,13 +868,20 @@ export class ZenProtocol {
 		}
 	}
 
-	// def query_scenes_for_group(self, address: ZenAddress, generic_if_none: bool=False) -> list[Optional[str]]:
-	//     """Compound command to query the labels for all scenes for a group. Returns list of scene labels, where None indicates no label is set."""
-	//     scenes: list[Optional[str]] = [None] * Const.MAX_SCENE
-	//     numbers = self.query_scene_numbers_for_group(address)
-	//     for scene in numbers:
-	//         scenes[scene] = self.query_scene_label_for_group(address, scene, generic_if_none=generic_if_none)
-	//     return scenes
+	/** Compound command to query the labels for all scenes for a group. Returns list of scene labels, where None indicates no label is set. */
+	async queryScenesForGroup(group: ZenAddress, genericIfNone = false): Promise<ZenScene[] | null> {
+		const scenes = await this.querySceneNumbersForGroup(group)
+		if (!scenes) {
+			return null
+		}
+
+		const result: ZenScene[] = []
+		for (const scene of scenes) {
+			const label = await this.querySceneLabelForGroup(group, scene, genericIfNone)
+			result.push(new ZenScene(group, scene, label))
+		}
+		return result
+	}
 
 	/** Query the controller's version number. Returns string, or None if query fails. */
 	async queryControllerVersionNumber(controller: ZenController): Promise<string | null> {
