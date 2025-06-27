@@ -261,7 +261,8 @@ export class ZenProtocol {
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'int'): Promise<number | null>
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'bool'): Promise<boolean | null>
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'ok'): Promise<boolean | null>
-	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'str' | 'bytes' | 'int' | 'bool' | 'ok'): Promise<string | Buffer | number | boolean | null> {
+	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'list'): Promise<number[] | null>
+	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'str' | 'bytes' | 'int' | 'bool' | 'ok' | 'list'): Promise<string | Buffer | number | boolean | number[] | null> {
 		if (data.length > 3) {
 			throw new Error('data must be 0-3 bytes')
 		}
@@ -298,6 +299,13 @@ export class ZenProtocol {
 				} else {
 					throw new ZenResponseError(`Invalid response of length ${response.data.length} for return type 'bool'`)
 				}
+			case 'list': {
+				const result: number[] = []
+				for (const byte of response.data) {
+					result.push(byte)
+				}
+				return result
+			}
 			default:
 				throw new Error(`Invalid return type '${returnType}' for response code ${response.responseCode.toString(16)}`)
 			}
@@ -604,15 +612,15 @@ export class ZenProtocol {
 	//         }
 	//     return None
 
-	// def query_group_numbers(self, controller: ZenController) -> list[ZenAddress]:
-	//     """Query a controller for groups."""
-	//     groups = self._send_basic(controller, self.CMD["QUERY_GROUP_NUMBERS"], return_type='list')
-	//     zen_groups = []
-	//     if groups is not None:
-	//         groups.sort()
-	//         for group in groups:
-	//             zen_groups.append(ZenAddress(controller=controller, type=ZenAddressType.GROUP, number=group))
-	//     return zen_groups
+	/** Query a controller for groups. */
+	async queryGroupNumbers(controller: ZenController): Promise<ZenAddress[] | null> {
+		const groups = await this.sendBasicFrame(controller, 'QUERY_GROUP_NUMBERS', 0, [], 'list')
+		if (!groups) {
+			return null
+		}
+
+		return groups.sort().map(group => new ZenAddress(controller, ZenAddressType.GROUP, group))
+	}
     
 	// def query_dali_colour(self, address: ZenAddress) -> Optional[ZenColour]:
 	//     """Query colour information from a DALI address."""
