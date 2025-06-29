@@ -10,6 +10,7 @@ import { ZenColour } from './zen-colour.js'
 import { ZenConst } from './zen-const.js'
 import { ZenEventMode, ZenEventType } from './zen-events.js'
 import { ZenScene } from './zen-scene.js'
+import { ZenControlGearType } from './zen-gear.js'
 
 export interface ZenProtocolOptions {
 	unicast?: boolean
@@ -999,27 +1000,32 @@ export class ZenProtocol {
 	//         }
 	//     return None
 
-	// def dali_query_cg_type(self, address: ZenAddress) -> Optional[list[int]]:
-	//     """Query device type information for a DALI address (ECG).
-        
-	//     Returns:
-	//         Optional[list[int]]: List of device type numbers that the control gear belongs to.
-	//                             Returns empty list if device doesn't exist.
-	//                             Returns None if query fails.
-	//     """
-	//     response = self._send_basic(address.controller, self.CMD["DALI_QUERY_CG_TYPE"], address.ecg())
-	//     if response and len(response) == 4:
-	//         device_types = []
-	//         # Process each byte which represents 8 device types
-	//         for byte_index, byte_value in enumerate(response):
-	//             # Check each bit in the byte
-	//             for bit in range(8):
-	//                 if byte_value & (1 << bit):
-	//                     # Calculate actual device type number
-	//                     device_type = byte_index * 8 + bit
-	//                     device_types.append(device_type)
-	//         return device_types
-	//     return None
+	/**
+	 * Query device type information for a DALI address (ECG).
+	 * 
+	 * Returns an array of device types that the control gear belongs to, or an empty array if the device
+	 * doesn't exist, or `null` if the query fails.
+	 */
+	async daliQueryCgType(address: ZenAddress): Promise<ZenControlGearType[] | null> {
+		const response = await this.sendBasicFrame(address.controller, 'DALI_QUERY_CG_TYPE', address.ecg(), [], 'bytes')
+		if (!response || response.length !== 4) {
+			return null
+		}
+
+		const result: ZenControlGearType[] = []
+		// Process each byte which represents 8 device types
+		for (let i = 0; i < 4; i++) {
+			const byteValue = response[i]
+			for (let j = 0; j < 8; j++) {
+				if (byteValue & (1 << j)) {
+					// Calculate actual device type number
+					const deviceType = i * 8 + j
+					result.push(deviceType as ZenControlGearType)
+				}
+			}
+		}
+		return result
+	}
 
 	// def dali_query_last_scene(self, address: ZenAddress) -> Optional[int]:
 	//     """Query the last heard Scene for a DALI address (ECG or group or broadcast). Returns scene number, or None if query fails.
