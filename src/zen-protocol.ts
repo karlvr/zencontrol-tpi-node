@@ -414,7 +414,11 @@ export class ZenProtocol {
 
 	/** Send a DALI colour command. */
 	async sendColour(controller: ZenController, command: ZenCommand, address: number, colour: ZenColour, level = 255): Promise<boolean> {
-		const result = await this.sendPacket(controller, command, [address, ...colour.toBytes(level)])
+		if (level < 0 || level > 255) {
+			throw new Error('Level must be between 0 and 255')
+		}
+
+		const result = await this.sendPacket(controller, command, [address, level, ...colour.toBytes()])
 		switch (result.responseCode) {
 		case ZenResponseCode.OK:
 			return true
