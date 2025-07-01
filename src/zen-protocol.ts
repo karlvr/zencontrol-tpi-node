@@ -198,7 +198,7 @@ export class ZenProtocol {
 		const originalSeq = seq
 		
 		while (this.requestsBySeq[seq]) {
-			seq = (seq + 1) % 256
+			seq = this.nextSeq++ % 256
 			if (seq === originalSeq) {
 				seqLoops++
 
