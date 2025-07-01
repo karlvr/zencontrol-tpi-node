@@ -56,12 +56,16 @@ export class ZenColour {
 		return null
 	}
 
+	/**
+	 * Convert this colour into bytes. Note that 0xff indicates an unused byte so
+	 * we clamp intentional values to 0xfe.
+	 */
 	toBytes(level = 255): Buffer {
 		switch (this.type) {
 		case ZenColourType.TC:
 			return Buffer.from([
 				level, 0x20,
-				(this.kelvin! >> 8) & 0xff, this.kelvin! & 0xff,
+				Math.min(0xfe, (this.kelvin! >> 8) & 0xff), Math.min(0xfe, this.kelvin! & 0xff),
 				// Use 0xFF for any unused bytes.
 				0xff, 0xff,
 				0xff, 0xff,
@@ -69,14 +73,14 @@ export class ZenColour {
 		case ZenColourType.RGBWAF:
 			return Buffer.from([
 				level, 0x80,
-				this.r ?? 0, this.g ?? 0, this.b ?? 0,
-				this.w ?? 0, this.a ?? 0, this.f ?? 0,
+				Math.min(0xfe, this.r ?? 0), Math.min(0xfe, this.g ?? 0), Math.min(0xfe, this.b ?? 0),
+				Math.min(0xfe, this.w ?? 0), Math.min(0xfe, this.a ?? 0), Math.min(0xfe, this.f ?? 0),
 			])
 		case ZenColourType.XY:
 			return Buffer.from([
 				level, 0x10,
-				((this.x ?? 0) >> 8) & 0xff, (this.x ?? 0) & 0xff,
-				((this.y ?? 0) >> 8) & 0xff, (this.y ?? 0) & 0xff,
+				Math.min(0xfe, ((this.x ?? 0) >> 8) & 0xff), Math.min(0xfe, (this.x ?? 0) & 0xff),
+				Math.min(0xfe, ((this.y ?? 0) >> 8) & 0xff), Math.min(0xfe, (this.y ?? 0) & 0xff),
 				// Use 0xFF for any unused bytes.
 				0xff, 0xff,
 			])
