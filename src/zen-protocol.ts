@@ -56,6 +56,7 @@ export class ZenProtocol {
 	private nextSeq = 0
 	private commandSocket: dgram.Socket
 	private eventSocket: dgram.Socket | null = null
+	private checkEventMonitoringInterval: NodeJS.Timeout | undefined
 
 	/** Used to match events to controllers, and include controller objects in callbacks */
 	public controllers: ZenController[]
@@ -1388,27 +1389,37 @@ export class ZenProtocol {
 			warn(`Event socket error: ${err}`)
 		})
 		if (this.unicast) {
+			socket.bind(this.listenPort, this.listenIp, () => {
+				
+			})
 			for (const controller of this.controllers) {
 				this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
 				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
 			}
-			socket.bind(this.listenPort, this.listenIp, () => {
-				
-			})
 		} else {
-			for (const controller of this.controllers) {
-				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
-			}
 			socket.bind(ZenConst.MULTICAST_PORT, () => {
 				socket.addMembership(ZenConst.MULTICAST_GROUP)
 			})
+			for (const controller of this.controllers) {
+				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
+			}
 		}
 		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => this._handleEventPacket(msg, rinfo))
 		socket.on('close', () => this._handleEventClose())
 		this.eventSocket = socket
+
+		if (this.checkEventMonitoringInterval) {
+			clearInterval(this.checkEventMonitoringInterval)
+		}
+		this.checkEventMonitoringInterval = setInterval(this._checkEventMonitoring.bind(this), 1000 * 60 * 10)
 	}
 
 	stopEventMonitoring(): void {
+		if (this.checkEventMonitoringInterval) {
+			clearInterval(this.checkEventMonitoringInterval)
+			this.checkEventMonitoringInterval = undefined
+		}
+
 		if (this.unicast) {
 			for (const controller of this.controllers) {
 				this.setTpiEventUnicastAddress(controller)
@@ -1419,6 +1430,15 @@ export class ZenProtocol {
 		if (eventSocket) {
 			this.eventSocket = null
 			eventSocket.disconnect()
+		}
+	}
+
+	private async _checkEventMonitoring() {
+		const states = await Promise.all(this.controllers.map(controller => this.queryTpiEventEmitState(controller)))
+		const problem = states.find(state => state === null || !state.enabled)
+		if (problem) {
+			log('Restarting event monitoring as check reveals controller emit state has changed')
+			this.startEventMonitoring()
 		}
 	}
 
