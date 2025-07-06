@@ -12,6 +12,12 @@ import { ZenEventMode, ZenEventType } from './zen-events.js'
 import { ZenScene } from './zen-scene.js'
 import { ZenControlGearType } from './zen-gear.js'
 
+interface Logger {
+	debug: (message: string) => void
+	info: (message: string) => void
+	warn: (message: string) => void
+}
+
 export interface ZenProtocolOptions {
 	unicast?: boolean
 	listenIp?: string
@@ -20,6 +26,7 @@ export interface ZenProtocolOptions {
 	controllers?: ZenController[]
 	maxRequestsPerController?: number
 	maxRetries?: number
+	logger?: Logger
 }
 
 enum ZenResponseCode {
@@ -80,6 +87,8 @@ export class ZenProtocol {
 	private localIp?: string
 	private requestsBySeq: ZenRequestPromise[] = []
 
+	private logger: Logger
+
 	constructor(opts: ZenProtocolOptions = {}) {
 		this.unicast = opts.unicast ?? false
 		this.listenIp = this.unicast ? opts.listenIp ?? '0.0.0.0' : undefined
@@ -88,6 +97,7 @@ export class ZenProtocol {
 		this.controllers = opts.controllers || []
 		this.maxRequestsPerController = opts.maxRequestsPerController || ZenConst.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
 		this.maxRetries = opts.maxRetries ?? ZenConst.DEFAULT_MAX_RETRIES
+		this.logger = opts.logger ?? console
 
 		// If unicast, and we're binding to 0.0.0.0, we still need to know our actual IP address
 		if (this.unicast) {
@@ -97,7 +107,7 @@ export class ZenProtocol {
 		this.commandSocket = dgram.createSocket('udp4')
 		this.commandSocket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
 			if (msg.length < 4) {
-				warn(`Received invalid message: too short from ${rinfo.address}:${rinfo.port}`)
+				this.logger.warn(`Received invalid message: too short from ${rinfo.address}:${rinfo.port}`)
 				return
 			}
 
@@ -107,7 +117,7 @@ export class ZenProtocol {
 
 			const request = this.requestsBySeq[seq]
 			if (!request) {
-				warn(`Received message with unknown sequence number (${seq}) from ${rinfo.address}:${rinfo.port}`)
+				this.logger.warn(`Received message with unknown sequence number (${seq}) from ${rinfo.address}:${rinfo.port}`)
 				return
 			}
 
@@ -205,10 +215,10 @@ export class ZenProtocol {
 
 				/* We've looped looking for a free sequence number */
 				if (seqLoops < 4) {
-					warn('No free sequence numbers for message. Waiting for a sequence number.')
+					this.logger.warn('No free sequence numbers for message. Waiting for a sequence number.')
 					await delay(Math.pow(10, seqLoops))
 				} else {
-					warn('Failed to find a free sequence number for message.')
+					this.logger.warn('Failed to find a free sequence number for message.')
 					this.finishActiveRequest(controller)
 					throw new ZenTimeoutError('Failed to find a free sequence number for message.')
 				}
@@ -231,7 +241,7 @@ export class ZenProtocol {
 
 			const handleSend = (err: Error | null) => {
 				if (err) {
-					warn(`Failed to send message to ${controller.host}:${controller.port}`, err)
+					this.logger.warn(`Failed to send message to ${controller.host}:${controller.port}: ${err instanceof Error ? err.message : err}`)
 
 					delete this.requestsBySeq[seq]
 					this.finishActiveRequest(controller)
@@ -241,7 +251,7 @@ export class ZenProtocol {
 						retries++
 
 						if (retries >= this.maxRetries) {
-							warn(`Failed to send message to ${controller.host}:${controller.port}: too many retries (${retries})`)
+							this.logger.warn(`Failed to send message to ${controller.host}:${controller.port}: too many retries (${retries})`)
 
 							delete this.requestsBySeq[seq]
 							this.finishActiveRequest(controller)
@@ -1386,7 +1396,7 @@ export class ZenProtocol {
 	startEventMonitoring(): void {
 		const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 		socket.on('error', (err) => {
-			warn(`Event socket error: ${err}`)
+			this.logger.warn(`Event socket error: ${err}`)
 		})
 		if (this.unicast) {
 			socket.bind(this.listenPort, this.listenIp, () => {
@@ -1435,27 +1445,32 @@ export class ZenProtocol {
 
 	private async _checkEventMonitoring() {
 		const states = await Promise.all(this.controllers.map(controller => this.queryTpiEventEmitState(controller)))
-		const problem = states.find(state => state === null || !state.enabled)
+
+		const expectMulticast = !this.unicast
+
+		const problem = states.find(state => state === null || !state.enabled || (expectMulticast && state.multicast !== expectMulticast) || (this.unicast && !state.unicast))
 		if (problem) {
-			log('Restarting event monitoring as check reveals controller emit state has changed')
+			this.logger.info('Restarting event monitoring as check reveals controller emit state has changed')
 			this.startEventMonitoring()
+		} else {
+			this.logger.debug('Checked controller event monitoring states: OK')
 		}
 	}
 
 	private _handleEventClose(): void {
 		if (this.eventSocket) {
-			log('Restarting event monitoring as the event socket closed unexpectedly')
+			this.logger.info('Restarting event monitoring as the event socket closed unexpectedly')
 			this.startEventMonitoring()
 		}
 	}
 
 	private _handleEventPacket(packet: Buffer, rinfo: RemoteInfo): void {
 		if (packet.length < 2) {
-			warn(`Invalid event packet from ${rinfo.address}:${rinfo.port}: too short ${packet.length}`)
+			this.logger.warn(`Invalid event packet from ${rinfo.address}:${rinfo.port}: too short ${packet.length}`)
 			return
 		}
 		if (packet[0] !== 0x5a || packet[1] !== 0x43) {
-			warn(`Invalid event packet from ${rinfo.address}:${rinfo.port}: invalid magic bytes ${packet[0].toString(16)}${packet[1].toString(16)}`)
+			this.logger.warn(`Invalid event packet from ${rinfo.address}:${rinfo.port}: invalid magic bytes ${packet[0].toString(16)}${packet[1].toString(16)}`)
 			return
 		}
 
@@ -1469,17 +1484,17 @@ export class ZenProtocol {
 		const receivedChecksum = packet[packet.length - 1]
 
 		if (payloadLen !== payload.length) {
-			warn(`Invalid payload length for event packet from ${rinfo.address}:${rinfo.port}`)
+			this.logger.warn(`Invalid payload length for event packet from ${rinfo.address}:${rinfo.port}`)
 		}
 
 		if (this.checksumBuffer(packet.subarray(0, -1)) !== receivedChecksum) {
-			warn(`Checksum mismatch for event packet from ${rinfo.address}:${rinfo.port}`)
+			this.logger.warn(`Checksum mismatch for event packet from ${rinfo.address}:${rinfo.port}`)
 			return
 		}
 
 		const controller = this._findController(macAddress)
 		if (!controller) {
-			warn(`Failed to find controller with MAC address ${macAddress} for event packet from ${rinfo.address}:${rinfo.port}`)
+			this.logger.warn(`Failed to find controller with MAC address ${macAddress} for event packet from ${rinfo.address}:${rinfo.port}`)
 			return
 		}
 
@@ -1525,7 +1540,7 @@ export class ZenProtocol {
 					const address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
 					this.sceneChangeCallback(address, payload[0])
 				} else {
-					warn(`Invalid scene change event target from ${rinfo.address}:${rinfo.port}: ${target}`)
+					this.logger.warn(`Invalid scene change event target from ${rinfo.address}:${rinfo.port}: ${target}`)
 				}
 			}
 			break
@@ -1539,7 +1554,7 @@ export class ZenProtocol {
 			// System Variable Change - A system variable has changed
 			if (this.systemVariableChangeCallback) {
 				if (target < 0 || target > ZenConst.MAX_SYSVAR) {
-					warn(`Invalid system variable change event from ${rinfo.address}:${rinfo.port}: ${target}`)
+					this.logger.warn(`Invalid system variable change event from ${rinfo.address}:${rinfo.port}: ${target}`)
 				} else {
 					const rawValue = (payload[0] & 0xff) << 24 | (payload[1] & 0xff) << 16 | (payload[2] & 0xff) << 8 | (payload[3] & 0xff)
 					const magnitude = payload[4] & 0xff
@@ -1553,7 +1568,7 @@ export class ZenProtocol {
 			if (this.colourChangeCallback) {
 				const colour = ZenColour.fromBytes(payload)
 				if (!colour) {
-					warn(`Invalid colour change event from ${rinfo.address}:${rinfo.port}: ${target}`)
+					this.logger.warn(`Invalid colour change event from ${rinfo.address}:${rinfo.port}: ${target}`)
 				} else if (target < 64) {
 					const address = new ZenAddress(controller, ZenAddressType.ECG, target)
 					this.colourChangeCallback(address, colour)
@@ -1562,7 +1577,7 @@ export class ZenProtocol {
 					this.colourChangeCallback(address, colour)
 				} else if (target >= 127 && target <= 143) {
 					const address = new ZenAddress(controller, ZenAddressType.GROUP, target)
-					warn(`Colour change callback received with target=${target}. Assumed to be group ${target - 128}.`)
+					this.logger.warn(`Colour change callback received with target=${target}. Assumed to be group ${target - 128}.`)
 					this.colourChangeCallback(address, colour)
 				}
 			}
@@ -1575,7 +1590,7 @@ export class ZenProtocol {
 			}
 			break
 		default:
-			warn(`Received unknown event type from ${rinfo.address}:${rinfo.port}: ${eventCode}`)
+			this.logger.warn(`Received unknown event type from ${rinfo.address}:${rinfo.port}: ${eventCode}`)
 			break
 		}
 	}
