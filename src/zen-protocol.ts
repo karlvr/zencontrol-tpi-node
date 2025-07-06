@@ -73,7 +73,7 @@ export class ZenProtocol {
 	public sceneChangeCallback?: (address: ZenAddress, scene: number) => void
 	public occupancyCallback?: (instance: ZenInstance) => void
 	public systemVariableChangeCallback?: (controller: ZenController, target: number, value: number) => void
-	public colourChangeCallback?: (address: ZenAddress, colour: ZenColour | null) => void
+	public colourChangeCallback?: (address: ZenAddress, colour: ZenColour) => void
 	public profileChangeCallback?: (controller: ZenController, profile: number) => void
 
 	private localIp?: string
@@ -1532,7 +1532,9 @@ export class ZenProtocol {
 			// Colour Change - A Tc, RGBWAF or XY colour change has occurred	
 			if (this.colourChangeCallback) {
 				const colour = ZenColour.fromBytes(payload)
-				if (target < 64) {
+				if (!colour) {
+					warn(`Invalid colour change event from ${rinfo.address}:${rinfo.port}: ${target}`)
+				} else if (target < 64) {
 					const address = new ZenAddress(controller, ZenAddressType.ECG, target)
 					this.colourChangeCallback(address, colour)
 				} else if (target >= 64 && target <= 79) {
