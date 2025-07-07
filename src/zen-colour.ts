@@ -215,6 +215,10 @@ export class ZenColour {
 		return 'ZenColour(unknown)'
 	}
 
+	/**
+	 * Convert this colour to HSV
+	 * @returns h is hue an integer between 0 and 360 inclusive, s is saturation between 0 and 1 inclusive, v is brightness between 0 and 1 inclusive.
+	 */
 	toHsv(): { h: number; s: number; v: number } {
 		if (this.type === ZenColourType.RGBWAF) {
 			let r = (this.r ?? 0) / 255
@@ -245,22 +249,12 @@ export class ZenColour {
 				h = 60 * (((r - g) / delta) + 4)
 			}
 
-			if (h < 0) {
-				h += 360
-			}
-
 			let s = max === 0 ? 0 : delta / max
 			let v = max
 
-			s *= 100
-			v *= 100
-
-			h = Math.round(h)
-			s = Math.round(s)
-			v = Math.round(v)
-
-			h = Math.min(360, h)
-			s = Math.min(100, s)
+			h = Math.round(h % 360)
+			s = Math.max(0, Math.min(1, s))
+			v = Math.max(0, Math.min(1, v))
 
 			return { h, s, v }
 		} else {
