@@ -48,6 +48,74 @@ export class ZenColour {
 		this._postInit()
 	}
 
+	/**
+	 * Create a new ZenColour from HSV.
+	 * @param h hue between 0 and 360 inclusive
+	 * @param s saturation between 0 and 1 inclusive
+	 * @param v brightness between 0 and 1 inclusive
+	 * @returns 
+	 */
+	static fromHsv(h: number, s: number, v: number): ZenColour {
+		let { r, g, b } = hsvToRgb(h, s, v)
+
+		let w = Math.min(r, g, b)
+		r -= w
+		g -= w
+		b -= w
+
+		const intensity_factor = 0.3
+
+		let a: number
+		/* Amber boost for ~20°-50° */
+		if (h >= 20 && h <= 50) {
+			a = (1 - Math.abs(h - 35) / 15) * intensity_factor
+		} else {
+			a = 0
+		}
+
+		let f: number
+		/* Far-Red boost for <30° or >330° */
+		if (h >= 330 || h <= 30) {
+			const hNorm = h > 330 ? h - 360 : h // bring >330 into negative range
+			const dist = Math.abs(hNorm) // distance from 0°/360°
+			f = (1 - dist / 30) * intensity_factor
+		} else {
+			f = 0
+		}
+
+		const clamp = (n: number) => Math.max(0, Math.min(1, n))
+		r = clamp(r)
+		g = clamp(g)
+		b = clamp(b)
+		w = clamp(w)
+		a = clamp(a)
+		f = clamp(f)
+
+		r *= 255
+		g *= 255
+		b *= 255
+		w *= 255
+		a *= 255
+		f *= 255
+
+		r = Math.round(r)
+		g = Math.round(g)
+		b = Math.round(b)
+		w = Math.round(w)
+		a = Math.round(a)
+		f = Math.round(f)
+
+		return new ZenColour({
+			r,
+			g,
+			b,
+			w,
+			a,
+			f,
+			type: ZenColourType.RGBWAF,
+		})
+	}
+
 	static fromBytes(bytes: Buffer): ZenColour | null {
 		if (!bytes || bytes.length === 0) {
 			return null
@@ -147,7 +215,104 @@ export class ZenColour {
 		return 'ZenColour(unknown)'
 	}
 
+	toHsv(): { h: number; s: number; v: number } {
+		if (this.type === ZenColourType.RGBWAF) {
+			let r = (this.r ?? 0) / 255
+			let g = (this.g ?? 0) / 255
+			let b = (this.b ?? 0) / 255
+			const w = (this.w ?? 0) / 255
+
+			r += w
+			g += w
+			b += w
+
+			r = Math.min(1, r)
+			g = Math.min(1, g)
+			b = Math.min(1, b)
+
+			const max = Math.max(r, g, b)
+			const min = Math.min(r, g, b)
+			const delta = max - min
+
+			let h = 0
+			if (delta === 0) {
+				h = 0
+			} else if (max === r) {
+				h = 60 * (((g - b) / delta) % 6)
+			} else if (max === g) {
+				h = 60 * (((b - r) / delta) + 2)
+			} else if (max === b) {
+				h = 60 * (((r - g) / delta) + 4)
+			}
+
+			if (h < 0) {
+				h += 360
+			}
+
+			let s = max === 0 ? 0 : delta / max
+			let v = max
+
+			s *= 100
+			v *= 100
+
+			h = Math.round(h)
+			s = Math.round(s)
+			v = Math.round(v)
+
+			h = Math.min(360, h)
+			s = Math.min(100, s)
+
+			return { h, s, v }
+		} else {
+			throw new Error(`Unsupported ZenColour type for toHsv: ${this.type}`)
+		}
+	}
+
 	equals(other: ZenColour): boolean {
 		return JSON.stringify(this) === JSON.stringify(other)
 	}
+}
+
+/**
+ * Convert HSV to RGB.
+ * @param h hue between 0 and 360 inclusive
+ * @param s saturation between 0 and 1 inclusive
+ * @param v brightness between 0 and 1 inclusive
+ * @returns 
+ */
+export function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+	if (h < 0 || h > 360) {
+		throw new Error(`Invalid hue: ${h}`)
+	}
+	if (s < 0 || s > 1) {
+		throw new Error(`Invalid saturation: ${s}`)
+	}
+	if (v < 0 || v > 1) {
+		throw new Error(`Invalid brightness: ${v}`)
+	}
+
+	const c = v * s
+	const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+	const m = v - c
+
+	let r, g, b
+	if (h < 60) {
+		[r, g, b] = [c, x, 0]
+	} else if (h < 120) {
+		[r, g, b] = [x, c, 0]
+	} else if (h < 180) {
+		[r, g, b] = [0, c, x]
+	} else if (h < 240) {
+		[r, g, b] = [0, x, c]
+	} else if (h < 300) {
+		[r, g, b] = [x, 0, c]
+	} else {
+		[r, g, b] = [c, 0, x]
+	}
+
+	r += m
+	g += m
+	b += m
+
+	return { r, g, b }
 }
