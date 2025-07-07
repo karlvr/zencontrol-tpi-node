@@ -6,9 +6,32 @@ export enum ZenColourType {
 	RGBWAF = 0x80,
 }
 
+export interface ZenColourXY {
+	type: ZenColourType.XY
+	x: number
+	y: number
+}
+
+export interface ZenColourTC {
+	type: ZenColourType.TC
+	kelvin?: number
+}
+
+export interface ZenColourRGBWAF {
+	type: ZenColourType.RGBWAF
+	r: number
+	g: number
+	b: number
+	w: number
+	a: number
+	f: number
+}
+
+export type ZenColourOptions = ZenColourXY | ZenColourTC | ZenColourRGBWAF
+
 // ZenColour
 export class ZenColour {
-	type?: ZenColourType
+	type: ZenColourType
 	kelvin?: number
 	r?: number
 	g?: number
@@ -19,7 +42,8 @@ export class ZenColour {
 	x?: number
 	y?: number
 
-	constructor(init?: Partial<ZenColour>) {
+	constructor(init: ZenColourOptions) {
+		this.type = init.type
 		Object.assign(this, init)
 		this._postInit()
 	}
