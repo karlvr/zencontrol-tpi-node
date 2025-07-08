@@ -234,29 +234,30 @@ export class ZenColour {
 			g = Math.min(1, g)
 			b = Math.min(1, b)
 
-			const max = Math.max(r, g, b)
-			const min = Math.min(r, g, b)
-			const delta = max - min
+			return rgbToHsv(r, g, b)
+		} else if (this.type === ZenColourType.XY) {
+			/* Convert xyY to XYZ */
+			const Y = 1.0
+			const X = (this.x! * Y) / this.y!
+			const Z = ((1 - this.x! - this.y!) * Y) / this.y!
 
-			let h = 0
-			if (delta === 0) {
-				h = 0
-			} else if (max === r) {
-				h = 60 * (((g - b) / delta) % 6)
-			} else if (max === g) {
-				h = 60 * (((b - r) / delta) + 2)
-			} else if (max === b) {
-				h = 60 * (((r - g) / delta) + 4)
+			/* Convert XYZ to linear RGB (sRGB color space) */
+			const rLinear =  3.2406*X - 1.5372*Y - 0.4986*Z
+			const gLinear = -0.9689*X + 1.8758*Y + 0.0415*Z
+			const bLinear =  0.0557*X - 0.2040*Y + 1.0570*Z
+
+			/* Apply gamma correction (linear RGB to sRGB) */
+			function correctGamma(c: number) {
+				c = Math.max(0.0, c)
+				return c <= 0.0031308 ? 12.92 * c : 1.055 * (c ** (1/2.4)) - 0.055
+			}
+			
+			function clamp(c: number) {
+				return Math.max(0, Math.min(1, c))
 			}
 
-			let s = max === 0 ? 0 : delta / max
-			let v = max
-
-			h = Math.round(h % 360)
-			s = Math.max(0, Math.min(1, s))
-			v = Math.max(0, Math.min(1, v))
-
-			return { h, s, v }
+			const [r, g, b] = [clamp(correctGamma(rLinear)), clamp(correctGamma(gLinear)), clamp(correctGamma(bLinear))]
+			return rgbToHsv(r, g, b)
 		} else {
 			throw new Error(`Unsupported ZenColour type for toHsv: ${this.type}`)
 		}
@@ -272,7 +273,7 @@ export class ZenColour {
  * @param h hue between 0 and 360 inclusive
  * @param s saturation between 0 and 1 inclusive
  * @param v brightness between 0 and 1 inclusive
- * @returns 
+ * @returns r, g, b between 0 and 1
  */
 export function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
 	if (h < 0 || h > 360) {
@@ -309,4 +310,37 @@ export function hsvToRgb(h: number, s: number, v: number): { r: number; g: numbe
 	b += m
 
 	return { r, g, b }
+}
+
+/**
+ * Convert RGB to HSV
+ * @param r red in range 0 to 1
+ * @param g green in range 0 to 1
+ * @param b blue in range 0 to 1
+ * @returns h between 0 and 360, s between 0 and 1, v between 0 and 1
+ */
+export function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+	const max = Math.max(r, g, b)
+	const min = Math.min(r, g, b)
+	const delta = max - min
+
+	let h = 0
+	if (delta === 0) {
+		h = 0
+	} else if (max === r) {
+		h = 60 * (((g - b) / delta) % 6)
+	} else if (max === g) {
+		h = 60 * (((b - r) / delta) + 2)
+	} else if (max === b) {
+		h = 60 * (((r - g) / delta) + 4)
+	}
+
+	let s = max === 0 ? 0 : delta / max
+	let v = max
+
+	h = Math.round(h % 360)
+	s = Math.max(0, Math.min(1, s))
+	v = Math.max(0, Math.min(1, v))
+
+	return { h, s, v }
 }
