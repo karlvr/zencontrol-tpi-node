@@ -1421,7 +1421,13 @@ export class ZenProtocol {
 				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
 			}
 		}
-		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => this._handleEventPacket(msg, rinfo))
+		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
+			try {
+				this._handleEventPacket(msg, rinfo)
+			} catch (error) {
+				this.logger.warn(`Failed to handle event packet from ${rinfo.address}:${rinfo.port}: ${error instanceof Error ? error.message : error}`)
+			}
+		})
 		socket.on('close', () => this._handleEventClose())
 		this.eventSocket = socket
 
@@ -1509,32 +1515,57 @@ export class ZenProtocol {
 		case ZenEventType.BUTTON_PRESS_EVENT:
 			// Button Press - Button has been pressed
 			if (this.buttonPressCallback) {
-				this.buttonPressCallback(new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0]))
+				const instance = new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0])
+				try {
+					this.buttonPressCallback(instance)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for button press event from ${rinfo.address}:${rinfo.port} for ${instance}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.BUTTON_HOLD_EVENT:
 			// Button Hold - Button has been pressed and is being held down
 			if (this.buttonHoldCallback) {
-				this.buttonHoldCallback(new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0]))
+				const instance = new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0])
+				try {
+					this.buttonHoldCallback(instance)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for button hold event from ${rinfo.address}:${rinfo.port} for ${instance}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.ABSOLUTE_INPUT_EVENT:
 			// Absolute Input - Absolute input has changed
 			if (this.absoluteInputCallback) {
 				const value = (payload[1] & 0xff << 8) | (payload[2] & 0xff)
-				this.absoluteInputCallback(new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0]), value)
+				const instance = new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0])
+				try {
+					this.absoluteInputCallback(instance, value)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for absolute input change event from ${rinfo.address}:${rinfo.port} for ${instance}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.LEVEL_CHANGE_EVENT:
 			// Level Change - Arc Level on an Address target has changed
 			if (this.levelChangeCallback) {
-				this.levelChangeCallback(new ZenAddress(controller, ZenAddressType.ECG, target), payload[0])
+				const address = new ZenAddress(controller, ZenAddressType.ECG, target)
+				try {
+					this.levelChangeCallback(address, payload[0])
+				} catch (error) {
+					this.logger.warn(`Change callback failed for level change event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.GROUP_LEVEL_CHANGE_EVENT:
 			// Group Level Change - Arc Level on a Group target has changed	
 			if (this.groupLevelChangeCallback) {
-				this.groupLevelChangeCallback(new ZenAddress(controller, ZenAddressType.GROUP, target), payload[0])
+				const address = new ZenAddress(controller, ZenAddressType.GROUP, target)
+				try {
+					this.groupLevelChangeCallback(address, payload[0])
+				} catch (error) {
+					this.logger.warn(`Change callback failed for group level change event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.SCENE_CHANGE_EVENT:
@@ -1542,10 +1573,18 @@ export class ZenProtocol {
 			if (this.sceneChangeCallback) {
 				if (target <= 63) {
 					const address = new ZenAddress(controller, ZenAddressType.ECG, target)
-					this.sceneChangeCallback(address, payload[0])
+					try {
+						this.sceneChangeCallback(address, payload[0])
+					} catch (error) {
+						this.logger.warn(`Change callback failed for scene change event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+					}
 				} else if (64 <= target && target <= 79) {
 					const address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
-					this.sceneChangeCallback(address, payload[0])
+					try {
+						this.sceneChangeCallback(address, payload[0])
+					} catch (error) {
+						this.logger.warn(`Change callback failed for scene change event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+					}
 				} else {
 					this.logger.warn(`Invalid scene change event target from ${rinfo.address}:${rinfo.port}: ${target}`)
 				}
@@ -1554,7 +1593,12 @@ export class ZenProtocol {
 		case ZenEventType.OCCUPANCY_EVENT:
 			// Is Occupied - An occupancy sensor has been triggered, area is occupied
 			if (this.occupancyCallback) {
-				this.occupancyCallback(new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.OCCUPANCY_SENSOR, payload[0]))
+				const instance = new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.OCCUPANCY_SENSOR, payload[0])
+				try {
+					this.occupancyCallback(instance)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for occupancy change event from ${rinfo.address}:${rinfo.port} for ${instance}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.SYSTEM_VARIABLE_CHANGED_EVENT:
@@ -1566,26 +1610,43 @@ export class ZenProtocol {
 					const rawValue = (payload[0] & 0xff) << 24 | (payload[1] & 0xff) << 16 | (payload[2] & 0xff) << 8 | (payload[3] & 0xff)
 					const magnitude = payload[4] & 0xff
 					const value = rawValue * Math.pow(10, magnitude)
-					this.systemVariableChangeCallback(controller, target, value)
+
+					try {
+						this.systemVariableChangeCallback(controller, target, value)
+					} catch (error) {
+						this.logger.warn(`Change callback failed for system variable change event from ${rinfo.address}:${rinfo.port} for ${target}: ${error instanceof Error ? error.message : error}`)
+					}
 				}
 			}
 			break
 		case ZenEventType.COLOUR_CHANGED_EVENT:
 			// Colour Change - A Tc, RGBWAF or XY colour change has occurred	
 			if (this.colourChangeCallback) {
-				const colour = ZenColour.fromBytes(payload)
-				if (!colour) {
-					this.logger.warn(`Invalid colour change event from ${rinfo.address}:${rinfo.port}: ${target}`)
-				} else if (target < 64) {
-					const address = new ZenAddress(controller, ZenAddressType.ECG, target)
-					this.colourChangeCallback(address, colour)
+				let colour: ZenColour
+				try {
+					colour = ZenColour.fromBytes(payload)
+				} catch (error) {
+					this.logger.warn(`Invalid colour change event from ${rinfo.address}:${rinfo.port}: ${target}: ${error instanceof Error ? error.message : error}`)
+					return
+				}
+
+				let address: ZenAddress
+				if (target < 64) {
+					address = new ZenAddress(controller, ZenAddressType.ECG, target)
 				} else if (target >= 64 && target <= 79) {
-					const address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
-					this.colourChangeCallback(address, colour)
+					address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
 				} else if (target >= 127 && target <= 143) {
-					const address = new ZenAddress(controller, ZenAddressType.GROUP, target)
+					address = new ZenAddress(controller, ZenAddressType.GROUP, target)
 					this.logger.warn(`Colour change callback received with target=${target}. Assumed to be group ${target - 128}.`)
+				} else {
+					this.logger.warn(`Colour change callback received with unsupported target: ${target}`)
+					return
+				}
+
+				try {
 					this.colourChangeCallback(address, colour)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for colour change event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
 				}
 			}
 			break

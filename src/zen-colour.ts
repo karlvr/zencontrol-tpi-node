@@ -116,9 +116,9 @@ export class ZenColour {
 		})
 	}
 
-	static fromBytes(bytes: Buffer): ZenColour | null {
+	static fromBytes(bytes: Buffer): ZenColour {
 		if (!bytes || bytes.length === 0) {
-			return null
+			throw new Error('Invalid colour: no bytes')
 		}
 		const type = bytes[0]
 		switch (type) {
@@ -145,7 +145,7 @@ export class ZenColour {
 			}
 			break
 		}
-		return null
+		throw new Error(`Invalid colour. Unsupported type: ${type}`)
 	}
 
 	/**
