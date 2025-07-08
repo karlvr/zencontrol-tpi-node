@@ -80,7 +80,7 @@ export class ZenProtocol {
 	public groupLevelChangeCallback?: (address: ZenAddress, arcLevel: number) => void
 	public sceneChangeCallback?: (address: ZenAddress, scene: number) => void
 	public occupancyCallback?: (instance: ZenInstance) => void
-	public systemVariableChangeCallback?: (controller: ZenController, target: number, value: number) => void
+	public systemVariableChangeCallback?: (controller: ZenController, variable: number, value: number) => void
 	public colourChangeCallback?: (address: ZenAddress, colour: ZenColour) => void
 	public profileChangeCallback?: (controller: ZenController, profile: number) => void
 
@@ -1318,21 +1318,28 @@ export class ZenProtocol {
 	//     # Else if abs(value) is less than 327600, use magitude 1 (signed 0x01)
 	//     # Else if abs(value) is less than 3276000, use magitude 2 (signed 0x02)
 
-	// def query_system_variable(self, controller: ZenController, variable: int) -> Optional[int]:
-	//     """Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful, else None."""
-	//     if not 0 <= variable < Const.MAX_SYSVAR:
-	//         raise ValueError(f"Variable number must be between 0 and {Const.MAX_SYSVAR}, received {variable}")
-	//     response = self._send_basic(controller, self.CMD["QUERY_SYSTEM_VARIABLE"], variable)
-	//     if response and len(response) == 2:
-	//         return int.from_bytes(response, byteorder="big", signed=True)
-	//     else: # Value is unset
-	//         return None
+	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful, else None. */
+	async querySystemVariable(controller: ZenController, variable: number): Promise<number | null> {
+		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
+			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
+		}
 
-	// def query_system_variable_name(self, controller: ZenController, variable: int) -> Optional[str]:
-	//     """Query the name of a system variable (0-147). Returns the variable's name, or None if query fails."""
-	//     if not 0 <= variable < Const.MAX_SYSVAR:
-	//         raise ValueError(f"Variable number must be between 0 and {Const.MAX_SYSVAR}, received {variable}")
-	//     return self._send_basic(controller, self.CMD["QUERY_SYSTEM_VARIABLE_NAME"], variable, return_type='str', cacheable=True)
+		const response = await this.sendBasicFrame(controller, 'QUERY_SYSTEM_VARIABLE', variable, [], 'bytes')
+		if (response && response.length === 2) {
+			return (response[0] << 8) | (response[1] & 0xff)
+		} else {
+			return null
+		}
+	}
+
+	/** Query the name of a system variable (0-147). Returns the variable's name, or None if query fails. */
+	async querySystemVariableName(controller: ZenController, variable: number): Promise<string | null> {
+		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
+			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
+		}
+
+		return await this.sendBasicFrame(controller, 'QUERY_SYSTEM_VARIABLE_NAME', variable, [], 'str')
+	}
 
 	async querySceneLevel(controller: ZenController, group: number, scene: number): Promise<number | null> {
 		try {
