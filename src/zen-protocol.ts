@@ -270,7 +270,7 @@ export class ZenProtocol {
 	}
 
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'str'): Promise<string | null>
-	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'bytes'): Promise<Buffer>
+	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'bytes'): Promise<Buffer | null>
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'int'): Promise<number | null>
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'bool'): Promise<boolean | null>
 	async sendBasicFrame(controller: ZenController, command: ZenCommand, address: number, data: number[], returnType: 'ok'): Promise<boolean | null>
@@ -630,10 +630,10 @@ export class ZenProtocol {
 	//     return None
 
 	/** Query a controller for groups. */
-	async queryGroupNumbers(controller: ZenController): Promise<ZenAddress[] | null> {
+	async queryGroupNumbers(controller: ZenController): Promise<ZenAddress[]> {
 		const groups = await this.sendBasicFrame(controller, 'QUERY_GROUP_NUMBERS', 0, [], 'list')
 		if (!groups) {
-			return null
+			return []
 		}
 
 		return groups.sort().map(group => new ZenAddress(controller, ZenAddressType.GROUP, group))
@@ -736,7 +736,9 @@ export class ZenProtocol {
 		return this.sendColour(address.controller, 'DALI_COLOUR', address.ecgOrGroupOrBroadcast(), colour, level)
 	}
 
-	/** Query a DALI group for its occupancy status and level. Returns a tuple containing group number, occupancy status, and actual level. */
+	/** Query a DALI group for its occupancy status and level. Returns a tuple containing group number, occupancy status, and actual level.
+	 * Returns `null` if the group is empty.
+	*/
 	async queryGroupByNumber(address: ZenAddress): Promise<{ group: number; occupancy: boolean; level: number} | null> {
 		const result = await this.sendBasicFrame(address.controller, 'QUERY_GROUP_BY_NUMBER', address.group(), [], 'bytes')
 		if (result) {
@@ -792,10 +794,10 @@ export class ZenProtocol {
 	//     return output
 
 	/** Query an address (ECG) for which DALI groups it belongs to. Returns a list of ZenAddress group instances. */
-	async queryGroupMembershipByAddress(address: ZenAddress): Promise<ZenAddress[] | null> {
+	async queryGroupMembershipByAddress(address: ZenAddress): Promise<ZenAddress[]> {
 		const response = await this.sendBasicFrame(address.controller, 'QUERY_GROUP_MEMBERSHIP_BY_ADDRESS', address.ecg(), [], 'bytes')
 		if (!response || response.length !== 2) {
-			return null
+			throw new ZenResponseError(`Unexpected response for QUERY_GROUP_MEMBERSHIP_BY_ADDRESS: ${response?.length}`)
 		}
 
 		const groups: number[] = []
@@ -844,10 +846,10 @@ export class ZenProtocol {
 	//     return zen_addresses
 
 	/** Query which DALI scenes are associated with a given group number. Returns list of scene numbers. */
-	async querySceneNumbersForGroup(group: ZenAddress): Promise<number[] | null> {
+	async querySceneNumbersForGroup(group: ZenAddress): Promise<number[]> {
 		const response = await this.sendBasicFrame(group.controller, 'QUERY_SCENE_NUMBERS_FOR_GROUP', group.group(), [], 'bytes')
 		if (!response || response.length !== 2) {
-			return null
+			throw new ZenResponseError(`Unexpected response for QUERY_SCENE_NUMBERS_FOR_GROUP: ${response?.length}`)
 		}
 
 		const scenes: number[] = []
@@ -884,7 +886,7 @@ export class ZenProtocol {
 		}
 	}
 
-	/** Compound command to query the labels for all scenes for a group. Returns list of scene labels, where None indicates no label is set. */
+	/** Compound command to query the labels for all scenes for a group. Returns list of scene labels, where `null` indicates no label is set. */
 	async queryScenesForGroup(group: ZenAddress, genericIfNone = false): Promise<ZenScene[] | null> {
 		const scenes = await this.querySceneNumbersForGroup(group)
 		if (!scenes) {
@@ -899,21 +901,21 @@ export class ZenProtocol {
 		return result
 	}
 
-	/** Query the controller's version number. Returns string, or None if query fails. */
-	async queryControllerVersionNumber(controller: ZenController): Promise<string | null> {
+	/** Query the controller's version number. */
+	async queryControllerVersionNumber(controller: ZenController): Promise<string> {
 		const response = await this.sendBasicFrame(controller, 'QUERY_CONTROLLER_VERSION_NUMBER', 0, [], 'bytes')
 		if (response && response.length === 3) {
 			return `${response[0]}.${response[1]}.${response[2]}`
 		} else {
-			return null
+			throw new ZenResponseError(`Unexpected response for QUERY_CONTROLLER_VERSION_NUMBER: ${response?.length}`)
 		}
 	}
 
 	/** Query which DALI control gear addresses are present in the database. Returns a list of ZenAddress instances. */
-	async queryControlGearDaliAddresses(controller: ZenController): Promise<ZenAddress[] | null> {
+	async queryControlGearDaliAddresses(controller: ZenController): Promise<ZenAddress[]> {
 		const response = await this.sendBasicFrame(controller, 'QUERY_CONTROL_GEAR_DALI_ADDRESSES', 0, [], 'bytes')
 		if (!response || response.length !== 8) {
-			return null
+			throw new ZenResponseError(`Unexpected response for QUERY_CONTROL_GEAR_DALI_ADDRESSES: ${response?.length}`)
 		}
 
 		const addresses: ZenAddress[] = []
@@ -1019,12 +1021,12 @@ export class ZenProtocol {
 	 * Query device type information for a DALI address (ECG).
 	 * 
 	 * Returns an array of device types that the control gear belongs to, or an empty array if the device
-	 * doesn't exist, or `null` if the query fails.
+	 * doesn't exist.
 	 */
-	async daliQueryCgType(address: ZenAddress): Promise<ZenControlGearType[] | null> {
+	async daliQueryCgType(address: ZenAddress): Promise<ZenControlGearType[]> {
 		const response = await this.sendBasicFrame(address.controller, 'DALI_QUERY_CG_TYPE', address.ecg(), [], 'bytes')
 		if (!response || response.length !== 4) {
-			return null
+			throw new ZenResponseError(`Unexpected response for DALI_QUERY_CG_TYPE: ${response?.length}`)
 		}
 
 		const result: ZenControlGearType[] = []
@@ -1077,10 +1079,10 @@ export class ZenProtocol {
 	 * continues for 250ms. If no arc levels are received within 250ms, the sequence ends
 	 * and normal fade rates resume.
 	 * 
-	 * Returns `true` if successful, `false` if failed, or `null` if an error occurs
+	 * Returns `true` if successful, `false` if failed.
 	 */
-	async daliEnableDAPCSequence(address: ZenAddress): Promise<boolean | null> {
-		return this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
+	async daliEnableDAPCSequence(address: ZenAddress): Promise<boolean> {
+		return !!this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
 	}
 
 	// def query_dali_ean(self, address: ZenAddress) -> Optional[int]:
@@ -1318,7 +1320,7 @@ export class ZenProtocol {
 	//     # Else if abs(value) is less than 327600, use magitude 1 (signed 0x01)
 	//     # Else if abs(value) is less than 3276000, use magitude 2 (signed 0x02)
 
-	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful, else None. */
+	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful, else `null`. */
 	async querySystemVariable(controller: ZenController, variable: number): Promise<number | null> {
 		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
 			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
@@ -1332,7 +1334,7 @@ export class ZenProtocol {
 		}
 	}
 
-	/** Query the name of a system variable (0-147). Returns the variable's name, or None if query fails. */
+	/** Query the name of a system variable (0-147). Returns the variable's name, or `null` if query fails. */
 	async querySystemVariableName(controller: ZenController, variable: number): Promise<string | null> {
 		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
 			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
@@ -1342,12 +1344,8 @@ export class ZenProtocol {
 	}
 
 	async querySceneLevel(controller: ZenController, group: number, scene: number): Promise<number | null> {
-		try {
-			const { data } = await this.sendPacket(controller, 'QUERY_SCENE_BY_NUMBER', [group, scene])
-			return data.length > 0 ? data[0] : null
-		} catch (_) {
-			return null
-		}
+		const { data } = await this.sendPacket(controller, 'QUERY_SCENE_BY_NUMBER', [group, scene])
+		return data.length > 0 ? data[0] : null
 	}
 
 	// async daliScene(controller: ZenController, address: number, scene: number): Promise<boolean | null> {
