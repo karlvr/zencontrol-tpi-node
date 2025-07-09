@@ -215,6 +215,10 @@ export class ZenColour {
 		return 'ZenColour(unknown)'
 	}
 
+	supportsToHsv() {
+		return this.type === ZenColourType.RGBWAF || this.type === ZenColourType.XY
+	}
+
 	/**
 	 * Convert this colour to HSV
 	 * @returns h is hue an integer between 0 and 360 inclusive, s is saturation between 0 and 1 inclusive, v is brightness between 0 and 1 inclusive.
