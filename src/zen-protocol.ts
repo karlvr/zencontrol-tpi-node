@@ -1400,7 +1400,7 @@ export class ZenProtocol {
 		Object.assign(this, callbacks)
 	}
 
-	startEventMonitoring(): void {
+	async startEventMonitoring(): Promise<void> {
 		const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 		socket.on('error', (err) => {
 			this.logger.warn(`Event socket error: ${err}`)
@@ -1411,14 +1411,16 @@ export class ZenProtocol {
 			})
 			for (const controller of this.controllers) {
 				this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
-				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
+				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: false, filtering: false, unicast: true, multicast: true }))
+				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
 			}
 		} else {
 			socket.bind(ZenConst.MULTICAST_PORT, () => {
 				socket.addMembership(ZenConst.MULTICAST_GROUP)
 			})
 			for (const controller of this.controllers) {
-				this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
+				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: false, filtering: false, unicast: false, multicast: true }))
+				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
 			}
 		}
 		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
