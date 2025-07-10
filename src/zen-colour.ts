@@ -342,6 +342,9 @@ export function rgbToHsv(r: number, g: number, b: number): { h: number; s: numbe
 	let s = max === 0 ? 0 : delta / max
 	let v = max
 
+	if (h < 0) {
+		h += 360
+	}
 	h = Math.round(h % 360)
 	s = Math.max(0, Math.min(1, s))
 	v = Math.max(0, Math.min(1, v))
