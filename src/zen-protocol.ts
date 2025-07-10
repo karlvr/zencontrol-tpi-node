@@ -1095,6 +1095,24 @@ export class ZenProtocol {
 	//         return ean
 	//     return None
 
+	/** Query a DALI address (ECG or ECD) for its Serial Number. Returns a hex string representation of the serial number. */
+	async queryDaliSerial(address: ZenAddress): Promise<string> {
+		const response = await this.sendBasicFrame(address.controller, 'QUERY_DALI_SERIAL', address.ecgOrEcd(), [], 'bytes')
+		if (!response || response.length !== 8) {
+			throw new ZenResponseError(`Unexpected response for QUERY_DALI_SERIAL: ${response?.length}`)
+		}
+
+		let result = ''
+		for (let i = 0; i < 8; i++) {
+			let hex = response[i].toString(16)
+			while (hex.length < 2) {
+				hex = `0${hex}`
+			}
+			result += hex
+		}
+		return result
+	}
+
 	// def query_dali_serial(self, address: ZenAddress) -> Optional[int]:
 	//     """Query a DALI address (ECG or ECD) for its Serial Number. Returns an integer if successful, None if query fails."""
 	//     response = self._send_basic(address.controller, self.CMD["QUERY_DALI_SERIAL"], address.ecg_or_ecd())
