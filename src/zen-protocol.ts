@@ -1427,7 +1427,6 @@ export class ZenProtocol {
 			})
 			for (const controller of this.controllers) {
 				this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
-				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: false, filtering: false, unicast: true, multicast: true }))
 				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
 			}
 		} else {
@@ -1435,7 +1434,6 @@ export class ZenProtocol {
 				socket.addMembership(ZenConst.MULTICAST_GROUP)
 			})
 			for (const controller of this.controllers) {
-				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: false, filtering: false, unicast: false, multicast: true }))
 				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
 			}
 		}
