@@ -1082,7 +1082,7 @@ export class ZenProtocol {
 	 * Returns `true` if successful, `false` if failed.
 	 */
 	async daliEnableDAPCSequence(address: ZenAddress): Promise<boolean> {
-		return !!this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
+		return !!await this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
 	}
 
 	// def query_dali_ean(self, address: ZenAddress) -> Optional[int]:
