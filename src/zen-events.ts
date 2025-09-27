@@ -52,29 +52,96 @@ export class ZenEventMode {
 }
 
 export class ZenEventMask {
-	private mask: number
+	button_press = false
+	button_hold = false
+	absolute_input = false
+	level_change = false
+	group_level_change = false
+	scene_change = false
+	is_occupied = false
+	system_variable_change = false
+	colour_change = false
+	profile_change = false
 
-	constructor(mask: number = 0) {
-		this.mask = mask
+	constructor() {
+		
 	}
 
-	static fromEvents(events: number[]): ZenEventMask {
-		return new ZenEventMask(events.reduce((m, e) => m | (1 << e), 0))
+	static allEvents() {
+		const result = new ZenEventMask()
+		result.button_press = true
+		result.button_hold = true
+		result.absolute_input = true
+		result.level_change = true
+		result.group_level_change = true
+		result.scene_change = true
+		result.is_occupied = true
+		result.system_variable_change = true
+		result.colour_change = true
+		result.profile_change = true
+		return result
 	}
 
-	has(event: number): boolean {
-		return (this.mask & (1 << event)) !== 0
+	static fromUpperLower(upper: number, lower: number) {
+		return ZenEventMask.fromDoubleByte((upper << 8) | lower)
 	}
 
-	add(event: number): void {
-		this.mask |= 1 << event
+	static fromDoubleByte(eventMask: number) {
+		const result = new ZenEventMask()
+		result.button_press = (eventMask & (1 << 0)) !== 0
+		result.button_hold = (eventMask & (1 << 1)) !== 0
+		result.absolute_input = (eventMask & (1 << 2)) !== 0
+		result.level_change = (eventMask & (1 << 3)) !== 0
+		result.group_level_change = (eventMask & (1 << 4)) !== 0
+		result.scene_change = (eventMask & (1 << 5)) !== 0
+		result.is_occupied = (eventMask & (1 << 6)) !== 0
+		result.system_variable_change = (eventMask & (1 << 7)) !== 0
+		result.colour_change = (eventMask & (1 << 8)) !== 0
+		result.profile_change = (eventMask & (1 << 9)) !== 0
+		return result
 	}
 
-	remove(event: number): void {
-		this.mask &= ~(1 << event)
+	bitmask() {
+		let result = 0x00
+		if (this.button_press) {
+			result |= (1 << 0)
+		}
+		if (this.button_hold) {
+			result |= (1 << 1)
+		}
+		if (this.absolute_input) {
+			result |= (1 << 2)
+		}
+		if (this.level_change) {
+			result |= (1 << 3)
+		}
+		if (this.group_level_change) {
+			result |= (1 << 4)
+		}
+		if (this.scene_change) {
+			result |= (1 << 5)
+		}
+		if (this.is_occupied) {
+			result |= (1 << 6)
+		}
+		if (this.system_variable_change) {
+			result |= (1 << 7)
+		}
+		if (this.colour_change) {
+			result |= (1 << 8)
+		}
+		if (this.profile_change) {
+			result |= (1 << 9)
+		}
+		return result
 	}
 
-	toByte(): number {
-		return this.mask & 0xff
+	upper() {
+		return (this.bitmask() >> 8) * 0xff
 	}
+
+	lower() {
+		return (this.bitmask() & 0xff)
+	}
+
 }

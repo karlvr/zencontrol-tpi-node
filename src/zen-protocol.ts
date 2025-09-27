@@ -8,7 +8,7 @@ import { ZenInstance, ZenInstanceType } from './zen-instance.js'
 import { ZenAddress, ZenAddressType } from './zen-address.js'
 import { ZenColour } from './zen-colour.js'
 import { ZenConst } from './zen-const.js'
-import { ZenEventMode, ZenEventType } from './zen-events.js'
+import { ZenEventMask, ZenEventMode, ZenEventType } from './zen-events.js'
 import { ZenScene } from './zen-scene.js'
 import { ZenControlGearType } from './zen-gear.js'
 
@@ -497,18 +497,21 @@ export class ZenProtocol {
 	//                          [instance_number, filter.upper(), filter.lower()],
 	//                          return_type='bool')
 
-	// def dali_clear_tpi_event_filter(self, address: ZenAddress|ZenInstance, unfilter: ZenEventMask = ZenEventMask.all_events()) -> bool:
-	//     """Allow specific events from an address/instance to be sent again. Events in mask will be unmuted. Returns true if filter was cleared successfully."""
-	//     instance_number = 0xFF
-	//     if isinstance(address, ZenInstance):
-	//         instance: ZenInstance = address
-	//         instance_number = instance.number
-	//         address = instance.address
-	//     return self._send_basic(address.controller,
-	//                          self.CMD["DALI_CLEAR_TPI_EVENT_FILTERS"],
-	//                          address.ecg_or_ecd_or_broadcast(),
-	//                          [instance_number, unfilter.upper(), unfilter.lower()],
-	//                          return_type='bool')
+	/** Allow specific events from an address/instance to be sent again. Events in mask will be unmuted. Returns true if filter was cleared successfully. */
+	async clearTpiEventFilter(address: ZenAddress | ZenInstance, unfilter: ZenEventMask = ZenEventMask.allEvents()): Promise<boolean | null> {
+		let instance_number = 0xff
+		if (address instanceof ZenInstance) {
+			instance_number = address.instance
+			address = address.address
+		}
+
+		return this.sendBasicFrame(address.controller,
+			'DALI_CLEAR_TPI_EVENT_FILTERS',
+			address.ecgOrEcdOrBroadcast(),
+			[ instance_number, unfilter.upper(), unfilter.lower() ],
+			'bool',
+		)
+	}
 
 	// def query_dali_tpi_event_filters(self, address: ZenAddress|ZenInstance) -> list[dict]:
 	//     """Query active event filters for an address (or a specific instance). Returns a list of dictionaries containing filter info, or None if query fails."""
@@ -1426,7 +1429,8 @@ export class ZenProtocol {
 				
 			})
 			for (const controller of this.controllers) {
-				this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
+				this.logger.debug(`Setting unicast event mode on controller ${controller.host} to address ${this.listenIp}:${this.listenPort}`)
+				await this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
 				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
 			}
 		} else {
@@ -1434,6 +1438,7 @@ export class ZenProtocol {
 				socket.addMembership(ZenConst.MULTICAST_GROUP)
 			})
 			for (const controller of this.controllers) {
+				this.logger.debug(`Setting multicast event mode on controller ${controller.host}`)
 				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
 			}
 		}
@@ -1625,7 +1630,9 @@ export class ZenProtocol {
 				} else {
 					const rawValue = payload.readInt32BE()
 					const magnitude = payload.readInt8()
+
 					const value = rawValue * Math.pow(10, magnitude)
+					this.logger.info(`Received system variable ${controller.id}.${target} change event with rawValue ${rawValue} and magnitude ${magnitude}, equals ${value}`)
 
 					try {
 						this.systemVariableChangeCallback(controller, target, value)
