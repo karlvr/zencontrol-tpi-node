@@ -11,6 +11,7 @@ import { ZenConst } from './zen-const.js'
 import { ZenEventMask, ZenEventMode, ZenEventType } from './zen-events.js'
 import { ZenScene } from './zen-scene.js'
 import { ZenControlGearType } from './zen-gear.js'
+import { hostAddressFor } from './networking.js'
 
 interface Logger {
 	debug: (message: string) => void
@@ -56,8 +57,8 @@ async function delay(ms: number): Promise<void> {
 
 export class ZenProtocol {
 	private unicast: boolean
-	private listenIp?: string
-	private listenPort?: number
+	private listenIp: string
+	private listenPort: number
 	private responseTimeout: number
 
 	private nextSeq = 0
@@ -91,8 +92,8 @@ export class ZenProtocol {
 
 	constructor(opts: ZenProtocolOptions = {}) {
 		this.unicast = opts.unicast ?? false
-		this.listenIp = this.unicast ? opts.listenIp ?? '0.0.0.0' : undefined
-		this.listenPort = this.unicast ? opts.listenPort ?? ZenConst.DEFAULT_UNICAST_PORT : undefined
+		this.listenIp = opts.listenIp ?? '0.0.0.0'
+		this.listenPort = opts.listenPort ?? ZenConst.DEFAULT_UNICAST_PORT
 		this.responseTimeout = opts.responseTimeout ?? ZenConst.RESPONSE_TIMEOUT
 		this.controllers = opts.controllers || []
 		this.maxRequestsPerController = opts.maxRequestsPerController || ZenConst.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
@@ -1425,22 +1426,49 @@ export class ZenProtocol {
 			this.logger.warn(`Event socket error: ${err}`)
 		})
 		if (this.unicast) {
-			socket.bind(this.listenPort, this.listenIp, () => {
-				
-			})
-			for (const controller of this.controllers) {
-				this.logger.debug(`Setting unicast event mode on controller ${controller.host} to address ${this.listenIp}:${this.listenPort}`)
-				await this.setTpiEventUnicastAddress(controller, this.listenIp, this.listenPort)
-				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
+			const setupControllers = async() => {
+				const port = socket.address().port
+				for (const controller of this.controllers) {
+					const address = this.listenIp !== '0.0.0.0' ? this.listenIp : hostAddressFor(controller.host)
+					if (address) {
+						this.logger.debug(`Setting unicast address on controller ${controller.host} to address ${address}:${port}`)
+						await this.setTpiEventUnicastAddress(controller, address, port)
+						this.logger.debug(`Setting unicast event mode on controller ${controller.host}`)
+						const result = await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: true, multicast: true }))
+						if (!result) {
+							this.logger.warn(`Controller failed to activate unicast event emit: ${controller.host}`)
+						}
+					} else {
+						this.logger.warn(`Failed to setup controller for unicast as cannot find local address to reach it: ${controller.host}`)
+					}
+				}
 			}
+			socket.bind(this.listenPort, this.listenIp, () => {
+				setupControllers().catch((reason) => {
+					this.logger.warn(`Failed to setup controllers for unicast: ${reason}`)
+				})
+			})
+			
 		} else {
+			const setupControllers = async () => {
+				for (const controller of this.controllers) {
+					this.logger.debug(`Disabling unicast on controller ${controller.host}`)
+					await this.setTpiEventUnicastAddress(controller)
+					this.logger.debug(`Setting multicast event mode on controller ${controller.host}`)
+					const result = await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
+					if (!result) {
+						this.logger.warn(`Controller failed to activate multicast event emit: ${controller.host}`)
+					}
+				}
+			}
+			
 			socket.bind(ZenConst.MULTICAST_PORT, () => {
 				socket.addMembership(ZenConst.MULTICAST_GROUP)
+
+				setupControllers().catch((reason) => {
+					this.logger.warn(`Failed to setup controllers for multicast: ${reason}`)
+				})
 			})
-			for (const controller of this.controllers) {
-				this.logger.debug(`Setting multicast event mode on controller ${controller.host}`)
-				await this.tpiEventEmit(controller, new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true }))
-			}
 		}
 		socket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
 			try {

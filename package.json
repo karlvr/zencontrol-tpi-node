@@ -31,5 +31,8 @@
 	},
 	"publishConfig": {
 		"access": "public"
+	},
+	"dependencies": {
+		"is-in-subnet": "^4.0.1"
 	}
 }
