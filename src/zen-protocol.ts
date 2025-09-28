@@ -1660,7 +1660,7 @@ export class ZenProtocol {
 					const magnitude = payload.readInt8()
 
 					const value = rawValue * Math.pow(10, magnitude)
-					this.logger.info(`Received system variable ${controller.id}.${target} change event with rawValue ${rawValue} and magnitude ${magnitude}, equals ${value}`)
+					// this.logger.debug(`Received system variable ${controller.id}.${target} change event with rawValue ${rawValue} and magnitude ${magnitude}, equals ${value}`)
 
 					try {
 						this.systemVariableChangeCallback(controller, target, value)
