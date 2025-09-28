@@ -130,22 +130,22 @@ export class ZenColour {
 					w: bytes[4], a: bytes[5], f: bytes[6],
 				})
 			}
-			break
+			throw new Error(`Invalid RGBWAF colour of length ${bytes.length}, expected 7 bytes`)
 		case ZenColourType.TC:
 			if (bytes.length === 3 || bytes.length === 7) {
 				const kelvin = (bytes[1] << 8) | bytes[2]
 				return new ZenColour({ type, kelvin })
 			}
-			break
+			throw new Error(`Invalid tuneable white colour of length ${bytes.length}, expected 3 or 7 bytes`)
 		case ZenColourType.XY:
 			if (bytes.length === 5 || bytes.length === 7) {
 				const x = (bytes[1] << 8) | bytes[2]
 				const y = (bytes[3] << 8) | bytes[4]
 				return new ZenColour({ type, x, y })
 			}
-			break
+			throw new Error(`Invalid XY colour of length ${bytes.length}, expected 5 or 7 bytes`)
 		}
-		throw new Error(`Invalid colour. Unsupported type: ${type}`)
+		throw new Error(`Unsupported colour type: ${type}`)
 	}
 
 	/**
@@ -182,22 +182,27 @@ export class ZenColour {
 	}
 
 	_postInit() {
-		if (this.type === ZenColourType.TC && (this.kelvin! < ZenConst.MIN_KELVIN || this.kelvin! > ZenConst.MAX_KELVIN)) {
-			throw new Error(`Kelvin must be between ${ZenConst.MIN_KELVIN} and ${ZenConst.MAX_KELVIN}: ${this.kelvin}`)
+		if (this.type === ZenColourType.TC) {
+			/* Check range and set to nearest valid value */
+			if (this.kelvin! < ZenConst.MIN_KELVIN) {
+				this.kelvin = ZenConst.MIN_KELVIN
+			} else if (this.kelvin! > ZenConst.MAX_KELVIN) {
+				this.kelvin = ZenConst.MAX_KELVIN
+			}
 		}
 		if (this.type === ZenColourType.RGBWAF) {
 			for (const [channel, value] of Object.entries({ r: this.r, g: this.g, b: this.b, w: this.w, a: this.a, f: this.f })) {
 				if (value != null && (value < 0 || value > 255)) {
-					throw new Error(`${channel.toUpperCase()} must be between 0 and 255`)
+					throw new Error(`${channel.toUpperCase()} must be between 0 and 255: ${value}`)
 				}
 			}
 		}
 		if (this.type === ZenColourType.XY) {
 			if (this.x! < 0 || this.x! > 65535) {
-				throw new Error('X must be between 0 and 65535')
+				throw new Error(`X must be between 0 and 65535: ${this.x}`)
 			}
 			if (this.y! < 0 || this.y! > 65535) {
-				throw new Error('Y must be between 0 and 65535')
+				throw new Error(`Y must be between 0 and 65535: ${this.y}`)
 			}
 		}
 	}
