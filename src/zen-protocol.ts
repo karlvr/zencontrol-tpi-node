@@ -85,7 +85,6 @@ export class ZenProtocol {
 	public colourChangeCallback?: (address: ZenAddress, colour: ZenColour) => void
 	public profileChangeCallback?: (controller: ZenController, profile: number) => void
 
-	private localIp?: string
 	private requestsBySeq: ZenRequestPromise[] = []
 
 	private logger: Logger
@@ -99,11 +98,6 @@ export class ZenProtocol {
 		this.maxRequestsPerController = opts.maxRequestsPerController || ZenConst.DEFAULT_MAX_REQUESTS_PER_CONTROLLER
 		this.maxRetries = opts.maxRetries ?? ZenConst.DEFAULT_MAX_RETRIES
 		this.logger = opts.logger ?? console
-
-		// If unicast, and we're binding to 0.0.0.0, we still need to know our actual IP address
-		if (this.unicast) {
-			this.localIp = this.resolveLocalIp()
-		}
 
 		this.commandSocket = dgram.createSocket('udp4')
 		this.commandSocket.on('message', (msg: Buffer, rinfo: RemoteInfo) => {
@@ -161,18 +155,6 @@ export class ZenProtocol {
 			/* Wait up one waiting request */
 			waitingFunc()
 		}
-	}
-
-	private resolveLocalIp(): string {
-		const interfaces = os.networkInterfaces()
-		for (const name of Object.keys(interfaces)) {
-			for (const iface of interfaces[name] ?? []) {
-				if (iface.family === 'IPv4' && !iface.internal) {
-					return iface.address
-				}
-			}
-		}
-		return '127.0.0.1'
 	}
 
 	private checksum(packet: number[]): number {
