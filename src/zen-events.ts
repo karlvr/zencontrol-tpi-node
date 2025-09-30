@@ -9,6 +9,8 @@ export enum ZenEventType {
 	SYSTEM_VARIABLE_CHANGED_EVENT = 0x07, // A system variable has changed
 	COLOUR_CHANGED_EVENT = 0x08,          // A Tc, RGBWAF or XY colour change has occurred
 	PROFILE_CHANGED_EVENT = 0x09,         // The active profile on the controller has changed.
+	GROUP_OCCUPANCY_EVENT = 0x0A,         // A sensor targeting a group has detected motion
+	LEVEL_CHANGE_EVENT_V2 = 0x0B,         // Arc Level of address/group plus if/where it is dimming to
 }
 
 export class ZenEventMode {

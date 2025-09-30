@@ -84,6 +84,8 @@ export class ZenProtocol {
 	public systemVariableChangeCallback?: (controller: ZenController, variable: number, value: number) => void
 	public colourChangeCallback?: (address: ZenAddress, colour: ZenColour) => void
 	public profileChangeCallback?: (controller: ZenController, profile: number) => void
+	public groupOccupancyCallback?: (address: ZenAddress, occupied: boolean) => void
+	public levelChangeV2Callback?: (address: ZenAddress, arcLevel: number, dimmingTo: number) => void
 
 	private requestsBySeq: ZenRequestPromise[] = []
 
@@ -1688,6 +1690,28 @@ export class ZenProtocol {
 			if (this.profileChangeCallback) {
 				const profile = (payload[0] & 0xff) << 8 | (payload[1] & 0xff)
 				this.profileChangeCallback(controller, profile)
+			}
+			break
+		case ZenEventType.GROUP_OCCUPANCY_EVENT:
+			// A sensor targeting a group has detected motion
+			if (this.groupOccupancyCallback) {
+				const address = new ZenAddress(controller, ZenAddressType.GROUP, target)
+				try {
+					this.groupOccupancyCallback(address, payload[1] !== 0)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for group occupancy event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+				}
+			}
+			break
+		case ZenEventType.LEVEL_CHANGE_EVENT_V2:
+			// Arc Level of address/group plus if/where it is dimming to
+			if (this.levelChangeV2Callback) {
+				const address = new ZenAddress(controller, ZenAddressType.ECG, target)
+				try {
+					this.levelChangeV2Callback(address, payload[0], payload[1])
+				} catch (error) {
+					this.logger.warn(`Change callback failed for level change v2 event from ${rinfo.address}:${rinfo.port} for ${address}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		default:
