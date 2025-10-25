@@ -1706,7 +1706,7 @@ export class ZenProtocol {
 		case ZenEventType.LEVEL_CHANGE_EVENT_V2:
 			// Arc Level of address/group plus if/where it is dimming to
 			if (this.levelChangeV2Callback) {
-				const address = new ZenAddress(controller, ZenAddressType.ECG, target)
+				const address = target < 64 ? new ZenAddress(controller, ZenAddressType.ECG, target) : new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
 				try {
 					this.levelChangeV2Callback(address, payload[0], payload[1])
 				} catch (error) {
