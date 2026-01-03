@@ -1326,7 +1326,8 @@ export class ZenProtocol {
 	//     # Else if abs(value) is less than 327600, use magitude 1 (signed 0x01)
 	//     # Else if abs(value) is less than 3276000, use magitude 2 (signed 0x02)
 
-	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful, else `null`. */
+	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (0-65534) if successful
+	 * and if the variable has a value, else `null`. */
 	async querySystemVariable(controller: ZenController, variable: number): Promise<number | null> {
 		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
 			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
@@ -1334,7 +1335,13 @@ export class ZenProtocol {
 
 		const response = await this.sendBasicFrame(controller, 'QUERY_SYSTEM_VARIABLE', variable, [], 'bytes')
 		if (response && response.length === 2) {
-			return (response[0] << 8) | (response[1] & 0xff)
+			const result = (response[0] << 8) | (response[1] & 0xff)
+			if (result !== 65535) {
+				return result
+			} else {
+				/* 65535 represents an unused system variable in this legacy API, see https://support.zencontrol.com/hc/en-us/articles/360000741316-What-is-a-system-address-variable */
+				return null
+			}
 		} else {
 			return null
 		}
