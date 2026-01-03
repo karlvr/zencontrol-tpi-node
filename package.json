@@ -11,6 +11,8 @@
 	"scripts": {
 		"build": "tsc",
 		"clean": "rm -rf dist",
+		"release": "$npm_execpath run clean && $npm_execpath run build && $npm_execpath publish && $npm_execpath exec changeset tag && $npm_execpath install",
+		"release:version": "$npm_execpath exec changeset version && $npm_execpath install",
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"watch": "tsc --watch"
 	},
