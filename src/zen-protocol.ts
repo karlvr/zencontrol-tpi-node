@@ -1310,21 +1310,21 @@ export class ZenProtocol {
 	//         }
 	//     return None
 
-	// def set_system_variable(self, controller: ZenController, variable: int, value: int) -> bool:
-	//     """Set a system variable (0-147) value (-32768-32767) on the controller. Returns `true` if successful, else `false`."""
-	//     if not 0 <= variable < Const.MAX_SYSVAR:
-	//         raise ValueError(f"Variable number must be between 0 and {Const.MAX_SYSVAR}, received {variable}")
-	//     if not -32768 <= value <= 32767:
-	//         raise ValueError(f"Value must be between -32768 and 32767, received {value}")
-	//     bytes = value.to_bytes(length=2, byteorder="big", signed=True)
-	//     return self._send_basic(controller, self.CMD["SET_SYSTEM_VARIABLE"], variable, [0x00, bytes[0], bytes[1]], return_type='ok')
+	/** Set a system variable (0-147) value (-32768-32767) on the controller. Returns `true` if successful, else `false`. */
+	async setSystemVariable(controller: ZenController, variable: number, value: number): Promise<boolean> {
+		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
+			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
+		}
+		if (value < -32768 || value > 32767) {
+			throw new Error(`Value must be between -32768 and 32767, received ${value}`)
+		}
 
-	//     # If abs(value) is less than 32760, 
-	//     #   If value has 2 decimal places, use magitude -2 (signed 0xfe)
-	//     #   Else if value has 1 decimal place, use magitude -1 (signed 0xff)
-	//     #   Else use magitude 0 (signed 0x00)
-	//     # Else if abs(value) is less than 327600, use magitude 1 (signed 0x01)
-	//     # Else if abs(value) is less than 3276000, use magitude 2 (signed 0x02)
+		const buffer = Buffer.alloc(2)
+		buffer.writeInt16BE(value)
+
+		/* NB: we need to left-pad our buffer to 3 bytes as we are big endian */
+		return !!this.sendBasicFrame(controller, 'SET_SYSTEM_VARIABLE', variable, [0, ...buffer], 'ok')
+	}
 
 	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (0-65534) if successful
 	 * and if the variable has a value, else `null`. */
