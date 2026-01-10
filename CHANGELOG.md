@@ -1,5 +1,11 @@
 # zencontrol-tpi-node
 
+## 1.2.0
+
+### Minor Changes
+
+- 6a2434f: Add `setSystemVariable`
+
 ## 1.1.0
 
 ### Minor Changes
