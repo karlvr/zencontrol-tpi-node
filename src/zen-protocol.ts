@@ -1416,6 +1416,17 @@ export class ZenProtocol {
 	}
 
 	async startEventMonitoring(): Promise<void> {
+		/* Close any existing event socket before creating a new one */
+		const existingSocket = this.eventSocket
+		if (existingSocket) {
+			this.eventSocket = null
+			try {
+				existingSocket.close()
+			} catch {
+				/* Socket may already be closed (e.g. after an error event) */
+			}
+		}
+
 		const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 		socket.on('error', (err) => {
 			this.logger.warn(`Event socket error: ${err}`)
