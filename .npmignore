@@ -4,6 +4,6 @@
 /.gitignore
 /.nvmrc
 /eslint.config.js
-/pnpm-lock.yaml
+/package-lock.json
 /tsconfig.json
 /*.tgz
