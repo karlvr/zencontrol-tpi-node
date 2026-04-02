@@ -1323,7 +1323,7 @@ export class ZenProtocol {
 		buffer.writeInt16BE(value)
 
 		/* NB: we need to left-pad our buffer to 3 bytes as we are big endian */
-		return !!this.sendBasicFrame(controller, 'SET_SYSTEM_VARIABLE', variable, [0, ...buffer], 'ok')
+		return !!(await this.sendBasicFrame(controller, 'SET_SYSTEM_VARIABLE', variable, [0, ...buffer], 'ok'))
 	}
 
 	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (0-65534) if successful
