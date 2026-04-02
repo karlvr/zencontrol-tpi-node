@@ -1492,7 +1492,7 @@ export class ZenProtocol {
 		const eventSocket = this.eventSocket
 		if (eventSocket) {
 			this.eventSocket = null
-			eventSocket.disconnect()
+			eventSocket.close()
 		}
 	}
 
