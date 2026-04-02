@@ -1577,7 +1577,7 @@ export class ZenProtocol {
 		case ZenEventType.ABSOLUTE_INPUT_EVENT:
 			// Absolute Input - Absolute input has changed
 			if (this.absoluteInputCallback) {
-				const value = (payload[1] & 0xff << 8) | (payload[2] & 0xff)
+				const value = ((payload[1] & 0xff) << 8) | (payload[2] & 0xff)
 				const instance = new ZenInstance(new ZenAddress(controller, ZenAddressType.ECD, target - 64), ZenInstanceType.PUSH_BUTTON, payload[0])
 				try {
 					this.absoluteInputCallback(instance, value)
