@@ -246,6 +246,9 @@ export class ZenColour {
 			return rgbToHsv(r, g, b)
 		} else if (this.type === ZenColourType.XY) {
 			/* Convert xyY to XYZ */
+			if (this.y === 0) {
+				return { h: 0, s: 0, v: 0 }
+			}
 			const Y = 1.0
 			const X = (this.x! * Y) / this.y!
 			const Z = ((1 - this.x! - this.y!) * Y) / this.y!
