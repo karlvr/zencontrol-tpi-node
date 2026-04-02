@@ -139,7 +139,7 @@ export class ZenEventMask {
 	}
 
 	upper() {
-		return (this.bitmask() >> 8) * 0xff
+		return (this.bitmask() >> 8) & 0xff
 	}
 
 	lower() {
