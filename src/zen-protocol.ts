@@ -233,6 +233,10 @@ export class ZenProtocol {
 					reject(err)
 				} else {
 					const timeout = () => {
+						if (!this.requestsBySeq[seq]) {
+							return /* Response already received */
+						}
+
 						retries++
 
 						if (retries >= this.maxRetries) {
