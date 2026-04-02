@@ -1477,7 +1477,7 @@ export class ZenProtocol {
 		this.checkEventMonitoringInterval = setInterval(this._checkEventMonitoring.bind(this), 1000 * 60 * 10)
 	}
 
-	stopEventMonitoring(): void {
+	async stopEventMonitoring(): Promise<void> {
 		if (this.checkEventMonitoringInterval) {
 			clearInterval(this.checkEventMonitoringInterval)
 			this.checkEventMonitoringInterval = undefined
@@ -1485,7 +1485,11 @@ export class ZenProtocol {
 
 		if (this.unicast) {
 			for (const controller of this.controllers) {
-				this.setTpiEventUnicastAddress(controller)
+				try {
+					await this.setTpiEventUnicastAddress(controller)
+				} catch (error) {
+					this.logger.warn(`Failed to clear unicast address on controller ${controller.host}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 		}
 
