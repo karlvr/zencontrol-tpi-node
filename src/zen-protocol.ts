@@ -1419,6 +1419,7 @@ export class ZenProtocol {
 		const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 		socket.on('error', (err) => {
 			this.logger.warn(`Event socket error: ${err}`)
+			socket.close()
 		})
 		if (this.unicast) {
 			const setupControllers = async() => {
