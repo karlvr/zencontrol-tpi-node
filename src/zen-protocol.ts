@@ -329,8 +329,12 @@ export class ZenProtocol {
 			}
 		}
 		case ZenResponseCode.NO_ANSWER: {
+			// NO_ANSWER is the documented success response for DALI lighting commands
+			// (e.g. DALI_SCENE, DALI_ARC_LEVEL, DALI_OFF): the controller has no data to
+			// return but the command was processed. Kept for backwards compatibility
+			// instead of OK. Failures surface as ERROR responses or timeouts.
 			if (returnType === 'ok') {
-				return false
+				return true
 			} else {
 				return null
 			}
@@ -376,8 +380,11 @@ export class ZenProtocol {
 				return response.data
 			}
 		case ZenResponseCode.NO_ANSWER:
+			// NO_ANSWER is the documented success response for DALI lighting commands
+			// (kept by the controller for backwards compatibility instead of OK).
+			// Failures surface as ERROR responses or timeouts.
 			if (returnType === 'ok') {
-				return false
+				return true
 			} else if (response.data.length) {
 				throw new ZenResponseError(`No answer with code: ${response.data[0]}`)
 			} else {
@@ -1090,7 +1097,7 @@ export class ZenProtocol {
 	 * Returns `true` if successful, `false` if failed.
 	 */
 	async daliEnableDAPCSequence(address: ZenAddress): Promise<boolean> {
-		return !!await this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'bool')
+		return !!await this.sendBasicFrame(address.controller, 'DALI_ENABLE_DAPC_SEQ', address.ecgOrGroupOrBroadcast(), [], 'ok')
 	}
 
 	// def query_dali_ean(self, address: ZenAddress) -> Optional[int]:
