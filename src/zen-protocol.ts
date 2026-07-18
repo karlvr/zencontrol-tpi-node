@@ -901,7 +901,7 @@ export class ZenProtocol {
 		return scenes.sort()
 	}
 
-	/** Query the label for a scene (0-11) and group number combination. Returns string, or `null` if no label is set. */
+	/** Query the label for a scene (0-12) and group number combination. Returns string, or `null` if no label is set. */
 	async querySceneLabelForGroup(group: ZenAddress, scene: number, genericIfNone = false): Promise<string | null> {
 		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
 			throw new Error(`Scene must be between 0 and ${ZenConst.MAX_SCENE}`)
@@ -924,8 +924,11 @@ export class ZenProtocol {
 			return null
 		}
 
+		// Controllers can report DALI scenes 13-15 in the bitmask, which have no user scene labels
+		const userScenes = scenes.filter(scene => scene <= ZenConst.MAX_SCENE)
+
 		const result: ZenScene[] = []
-		for (const scene of scenes) {
+		for (const scene of userScenes) {
 			const label = await this.querySceneLabelForGroup(group, scene, genericIfNone)
 			result.push(new ZenScene(group, scene, label))
 		}
@@ -974,7 +977,7 @@ export class ZenProtocol {
 		return !!await this.sendBasicFrame(address.controller, 'DALI_INHIBIT', address.ecgOrGroupOrBroadcast(), [0x00, timeHi, timeLo], 'ok')
 	}
 
-	/** Send RECALL SCENE (0-11) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`. */
+	/** Send RECALL SCENE (0-12) to an address (ECG or group or broadcast). Returns `true` if acknowledged, else `false`. */
 	async daliScene(address: ZenAddress, scene: number): Promise<boolean> {
 		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
 			throw new Error(`Scene must be between 0 and ${ZenConst.MAX_SCENE}`)

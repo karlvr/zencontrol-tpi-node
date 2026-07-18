@@ -7,7 +7,7 @@ export class ZenScene {
 	label: string | null
 
 	constructor(group: ZenAddress, scene: number, label: string | null) {
-		if (scene < 0 || scene >= ZenConst.MAX_SCENE) {
+		if (scene < 0 || scene > ZenConst.MAX_SCENE) {
 			throw new Error(`Scene number out of range: ${scene}`)
 		}
 		this.group = group

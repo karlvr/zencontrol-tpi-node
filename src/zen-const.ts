@@ -10,7 +10,7 @@ export const ZenConst = {
 	MAX_ECD: 64, // 0-63
 	MAX_INSTANCE: 32, // 0-31
 	MAX_GROUP: 16, // 0-15
-	MAX_SCENE: 12, // 0-11
+	MAX_SCENE: 12, // Maximum user scene number; user scenes are 0-12
 	MAX_SYSVAR: 148, // 0-147
 	MAX_LEVEL: 254, // 255 is mask value (i.e. no change)
 	MIN_KELVIN: 1000,
