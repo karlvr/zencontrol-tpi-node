@@ -283,12 +283,13 @@ export class ZenProtocol {
 		if (data.length > 3) {
 			throw new Error('data must be 0-3 bytes')
 		}
-		// Pad data to 3 bytes
-		while (data.length < 3) {
-			data.push(0)
+		// Pad a copy to 3 bytes so we don't mutate the caller's array
+		const frameData = [...data]
+		while (frameData.length < 3) {
+			frameData.push(0)
 		}
 
-		const response = await this.sendPacket(controller, command, [address, ...data])
+		const response = await this.sendPacket(controller, command, [address, ...frameData])
 
 		switch (response.responseCode) {
 		case ZenResponseCode.OK: {
