@@ -19,5 +19,5 @@ export function percentageToArcLevel(percentage: number): number {
 		return 0
 	}
 
-	return Math.round((Math.log10(percentage) + 1) * 253 / 3 + 1)
+	return Math.max(1, Math.min(254, Math.round((Math.log10(percentage) + 1) * 253 / 3 + 1)))
 }
