@@ -1102,8 +1102,8 @@ export class ZenProtocol {
 				if (target < 0 || target > ZenConst.MAX_SYSVAR) {
 					this.logger.warn(`Invalid system variable change event from ${rinfo.address}:${rinfo.port}: ${target}`)
 				} else {
-					const rawValue = payload.readInt32BE()
-					const magnitude = payload.readInt8()
+					const rawValue = payload.readInt32BE(0)
+					const magnitude = payload.readInt8(4)
 
 					const value = rawValue * Math.pow(10, magnitude)
 					// this.logger.debug(`Received system variable ${controller.id}.${target} change event with rawValue ${rawValue} and magnitude ${magnitude}, equals ${value}`)
