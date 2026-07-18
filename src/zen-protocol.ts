@@ -65,6 +65,8 @@ export class ZenProtocol {
 	private commandSocket: dgram.Socket
 	private eventSocket: dgram.Socket | null = null
 	private checkEventMonitoringInterval: NodeJS.Timeout | undefined
+	private eventRestartDelay = 1000
+	private eventRestartTimer: NodeJS.Timeout | undefined
 
 	/** Used to match events to controllers, and include controller objects in callbacks */
 	public controllers: ZenController[]
@@ -1455,6 +1457,12 @@ export class ZenProtocol {
 	}
 
 	async startEventMonitoring(): Promise<void> {
+		/* Cancel any pending restart so overlapping restarts can't stack */
+		if (this.eventRestartTimer) {
+			clearTimeout(this.eventRestartTimer)
+			this.eventRestartTimer = undefined
+		}
+
 		/* Close any existing event socket before creating a new one */
 		const existingSocket = this.eventSocket
 		if (existingSocket) {
@@ -1542,6 +1550,11 @@ export class ZenProtocol {
 			this.checkEventMonitoringInterval = undefined
 		}
 
+		if (this.eventRestartTimer) {
+			clearTimeout(this.eventRestartTimer)
+			this.eventRestartTimer = undefined
+		}
+
 		if (this.unicast) {
 			for (const controller of this.controllers) {
 				try {
@@ -1577,10 +1590,13 @@ export class ZenProtocol {
 
 	private _handleEventClose(): void {
 		if (this.eventSocket) {
-			this.logger.info('Restarting event monitoring as the event socket closed unexpectedly')
-			this.startEventMonitoring().catch((error) => {
-				this.logger.warn(`Failed to restart event monitoring: ${error instanceof Error ? error.message : error}`)
-			})
+			this.logger.warn(`Event socket closed unexpectedly, restarting event monitoring in ${this.eventRestartDelay}ms`)
+			this.eventRestartTimer = setTimeout(() => {
+				this.startEventMonitoring().catch((error) => {
+					this.logger.warn(`Failed to restart event monitoring: ${error instanceof Error ? error.message : error}`)
+				})
+			}, this.eventRestartDelay)
+			this.eventRestartDelay = Math.min(this.eventRestartDelay * 2, 60000)
 		}
 	}
 
@@ -1611,6 +1627,8 @@ export class ZenProtocol {
 			this.logger.warn(`Checksum mismatch for event packet from ${rinfo.address}:${rinfo.port}`)
 			return
 		}
+
+		this.eventRestartDelay = 1000
 
 		const controller = this._findController(macAddress)
 		if (!controller) {
