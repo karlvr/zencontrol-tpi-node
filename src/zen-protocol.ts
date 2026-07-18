@@ -484,12 +484,17 @@ export class ZenProtocol {
 				throw new Error('Port must be between 0 and 65535')
 			}
 
+			const octets = ipaddr.split('.').map(str => Number(str))
+			if (octets.length !== 4 || octets.some(octet => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+				throw new Error(`Address must be an IPv4 dotted-quad address, received ${ipaddr}`)
+			}
+
 			// Split port into upper and lower bytes
 			const portUpper = (port >> 8) & 0xff
 			const portLower = port & 0xff
 
 			// Construct data payload: [port_upper, port_lower, ip1, ip2, ip3, ip4]
-			const data = [portUpper, portLower, ...ipaddr.split('.').map(str => Number(str))]
+			const data = [portUpper, portLower, ...octets]
 			return await this.sendDynamicFrame(controller, 'SET_TPI_EVENT_UNICAST_ADDRESS', data, 'ok')
 		} else {
 			return await this.sendDynamicFrame(controller, 'SET_TPI_EVENT_UNICAST_ADDRESS', [0,0,0,0,0,0], 'ok')
