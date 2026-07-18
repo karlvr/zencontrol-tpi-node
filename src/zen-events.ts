@@ -64,6 +64,8 @@ export class ZenEventMask {
 	system_variable_change = false
 	colour_change = false
 	profile_change = false
+	group_occupancy = false
+	level_change_v2 = false
 
 	constructor() {
 		
@@ -81,6 +83,8 @@ export class ZenEventMask {
 		result.system_variable_change = true
 		result.colour_change = true
 		result.profile_change = true
+		result.group_occupancy = true
+		result.level_change_v2 = true
 		return result
 	}
 
@@ -100,6 +104,8 @@ export class ZenEventMask {
 		result.system_variable_change = (eventMask & (1 << 7)) !== 0
 		result.colour_change = (eventMask & (1 << 8)) !== 0
 		result.profile_change = (eventMask & (1 << 9)) !== 0
+		result.group_occupancy = (eventMask & (1 << 10)) !== 0
+		result.level_change_v2 = (eventMask & (1 << 11)) !== 0
 		return result
 	}
 
@@ -134,6 +140,12 @@ export class ZenEventMask {
 		}
 		if (this.profile_change) {
 			result |= (1 << 9)
+		}
+		if (this.group_occupancy) {
+			result |= (1 << 10)
+		}
+		if (this.level_change_v2) {
+			result |= (1 << 11)
 		}
 		return result
 	}
