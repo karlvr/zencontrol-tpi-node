@@ -651,7 +651,7 @@ export class ZenProtocol {
 			return []
 		}
 
-		return groups.sort().map(group => new ZenAddress(controller, ZenAddressType.GROUP, group))
+		return groups.sort((a, b) => a - b).map(group => new ZenAddress(controller, ZenAddressType.GROUP, group))
 	}
     
 	// def query_dali_colour(self, address: ZenAddress) -> Optional[ZenColour]:
@@ -831,7 +831,7 @@ export class ZenProtocol {
 		}
 
 		// Process into ZenAddress instances
-		return groups.sort().map(group => new ZenAddress(address.controller, ZenAddressType.GROUP, group))
+		return groups.sort((a, b) => a - b).map(group => new ZenAddress(address.controller, ZenAddressType.GROUP, group))
 	}
 
 	/** Query a DALI address (ECG) for the scene numbers it has levels programmed for. Returns a list of scene numbers. */
@@ -898,7 +898,7 @@ export class ZenProtocol {
 			}
 		}
 
-		return scenes.sort()
+		return scenes.sort((a, b) => a - b)
 	}
 
 	/** Query the label for a scene (0-12) and group number combination. Returns string, or `null` if no label is set. */
