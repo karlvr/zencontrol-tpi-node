@@ -71,8 +71,8 @@ export class ZenProtocol {
 	public maxRequestsPerController: number
 	public maxRetries: number
 
-	private waiting: Record<number, (() => void)[]> = {}
-	private activeRequests: Record<number, number> = {}
+	/** Per-controller concurrency state: number of in-flight requests, and resolvers waiting for a slot to free up. */
+	private requestSlots: Record<number, { active: number, waiting: (() => void)[] }> = {}
 
 	public buttonPressCallback?: (instance: ZenInstance) => void
 	public buttonHoldCallback?: (instance: ZenInstance) => void
@@ -155,12 +155,34 @@ export class ZenProtocol {
 		})
 	}
 
-	private finishActiveRequest(controller: ZenController): void {
-		this.activeRequests[controller.id]--
+	/**
+	 * Wait until fewer than `maxRequestsPerController` requests are active for the given controller,
+	 * then reserve a slot for the caller. Pair with `finishActiveRequest` once the request completes.
+	 */
+	private async acquireRequestSlot(controller: ZenController): Promise<void> {
+		if (!this.requestSlots[controller.id]) {
+			this.requestSlots[controller.id] = { active: 0, waiting: [] }
+		}
+		const slots = this.requestSlots[controller.id]
 
-		const waitingFunc = this.waiting[controller.id]?.shift()
+		while (slots.active >= this.maxRequestsPerController) {
+			await new Promise<void>(resolve => slots.waiting.push(resolve))
+		}
+
+		slots.active++
+	}
+
+	private finishActiveRequest(controller: ZenController): void {
+		const slots = this.requestSlots[controller.id]
+		if (!slots) {
+			return
+		}
+
+		slots.active--
+
+		const waitingFunc = slots.waiting.shift()
 		if (waitingFunc) {
-			/* Wait up one waiting request */
+			/* Wake up one waiting request */
 			waitingFunc()
 		}
 	}
@@ -178,22 +200,7 @@ export class ZenProtocol {
 	async sendPacket(controller: ZenController, command: ZenCommand, data: number[]): Promise<ZenResponse> {
 		const commandCode = CMD[command]
 
-		const activeRequests = this.activeRequests[controller.id]
-		if (activeRequests === undefined) {
-			this.activeRequests[controller.id] = 0
-		}
-
-		if (activeRequests >= this.maxRequestsPerController) {
-			/* Wait for another request to finish */
-			await new Promise<void>((resolve) => {
-				if (!this.waiting[controller.id]) {
-					this.waiting[controller.id] = []
-				}
-				this.waiting[controller.id].push(resolve)
-			})
-		}
-		
-		this.activeRequests[controller.id]++
+		await this.acquireRequestSlot(controller)
 
 		let seq = this.nextSeq
 		this.nextSeq = (this.nextSeq + 1) % 256
