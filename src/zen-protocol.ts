@@ -240,6 +240,10 @@ export class ZenProtocol {
 			let retries = 0
 
 			const handleSend = (err: Error | null) => {
+				if (this.requestsBySeq[seq] !== req) {
+					return /* Response already received, or sequence number reused by another request */
+				}
+
 				if (err) {
 					this.logger.warn(`Failed to send message to ${controller.host}:${controller.port}: ${err instanceof Error ? err.message : err}`)
 
