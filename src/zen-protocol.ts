@@ -574,7 +574,6 @@ export class ZenProtocol {
 	/** Enable or disable TPI Event emission. Returns `true` if successful, else `false`. */
 	async tpiEventEmit(controller: ZenController, mode: ZenEventMode = new ZenEventMode({ enabled: true, filtering: false, unicast: false, multicast: true })): Promise<boolean> {
 		const modeFlag = mode.bitmask()
-		await this.sendBasicFrame(controller, 'ENABLE_TPI_EVENT_EMIT', 0x00, [], 'int') // disable first to clear any existing state... I think this is a bug?
 		const result = await this.sendBasicFrame(controller, 'ENABLE_TPI_EVENT_EMIT', modeFlag, [], 'int')
 		return (result === modeFlag)
 	}
