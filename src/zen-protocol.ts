@@ -834,6 +834,22 @@ export class ZenProtocol {
 		return groups.sort().map(group => new ZenAddress(address.controller, ZenAddressType.GROUP, group))
 	}
 
+	/** Query a DALI address (ECG) for the scene numbers it has levels programmed for. Returns a list of scene numbers. */
+	async querySceneNumbersByAddress(address: ZenAddress): Promise<number[]> {
+		const response = await this.sendBasicFrame(address.controller, 'QUERY_SCENE_NUMBERS_BY_ADDRESS', address.ecg(), [], 'list')
+		return response ?? []
+	}
+
+	/** Query a DALI address (ECG) for its programmed level in each of the 16 DALI scenes. Returns 16 entries where `null` means the address is not part of that scene. */
+	async querySceneLevelsByAddress(address: ZenAddress): Promise<(number | null)[]> {
+		const response = await this.sendBasicFrame(address.controller, 'QUERY_SCENE_LEVELS_BY_ADDRESS', address.ecg(), [], 'list')
+		if (response) {
+			return response.map(level => level === 255 ? null : level)
+		} else {
+			return new Array(16).fill(null)
+		}
+	}
+
 	// def query_dali_addresses_with_instances(self, controller: ZenController, start_address: int=0) -> list[ZenAddress]: # TODO: automate iteration over start_address=0, start_address=60, etc.
 	//     """Query for DALI addresses that have instances associated with them.
     
@@ -1381,11 +1397,6 @@ export class ZenProtocol {
 		}
 
 		return await this.sendBasicFrame(controller, 'QUERY_SYSTEM_VARIABLE_NAME', variable, [], 'str')
-	}
-
-	async querySceneLevel(controller: ZenController, group: number, scene: number): Promise<number | null> {
-		const { data } = await this.sendPacket(controller, 'QUERY_SCENE_BY_NUMBER', [group, scene])
-		return data.length > 0 ? data[0] : null
 	}
 
 	// async daliScene(controller: ZenController, address: number, scene: number): Promise<boolean | null> {
