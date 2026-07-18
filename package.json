@@ -14,7 +14,7 @@
 		"lint": "eslint .",
 		"release": "$npm_execpath run clean && $npm_execpath run build && $npm_execpath publish && $npm_execpath exec changeset tag && $npm_execpath install",
 		"release:version": "$npm_execpath exec changeset version && $npm_execpath install",
-		"test": "echo \"Error: no test specified\" && exit 1",
+		"test": "vitest run",
 		"watch": "tsc --watch"
 	},
 	"keywords": [
@@ -30,7 +30,8 @@
 		"@types/node": "^25.5.0",
 		"eslint": "^10.1.0",
 		"typescript": "^6.0.2",
-		"typescript-eslint": "^8.58.0"
+		"typescript-eslint": "^8.58.0",
+		"vitest": "^4.1.10"
 	},
 	"publishConfig": {
 		"access": "public"
