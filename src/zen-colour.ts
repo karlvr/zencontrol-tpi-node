@@ -160,7 +160,8 @@ export class ZenColour {
 	toBytes(): Buffer {
 		switch (this.type) {
 		case ZenColourType.TC: {
-			const kelvin = Math.min(0xfffe, this.kelvin!)
+			/* An unset kelvin means "leave at current value", represented as 0xFFFF */
+			const kelvin = this.kelvin !== undefined ? Math.min(0xfffe, this.kelvin) : 0xffff
 			return Buffer.from([
 				0x20,
 				(kelvin >> 8) & 0xff, kelvin & 0xff,
