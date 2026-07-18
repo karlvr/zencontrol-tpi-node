@@ -901,7 +901,13 @@ export class ZenProtocol {
 				this.logger.warn(`Failed to handle event packet from ${rinfo.address}:${rinfo.port}: ${error instanceof Error ? error.message : error}`)
 			}
 		})
-		socket.on('close', () => this._handleEventClose())
+		socket.on('close', () => {
+			/* Only react if this socket is still the active one; a socket closed
+			   deliberately by a restart or stop has already been replaced or cleared. */
+			if (this.eventSocket === socket) {
+				this._handleEventClose()
+			}
+		})
 		this.eventSocket = socket
 
 		if (this.checkEventMonitoringInterval) {
