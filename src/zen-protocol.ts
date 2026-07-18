@@ -118,6 +118,25 @@ export class ZenProtocol {
 				return
 			}
 
+			const controllerHost = request.controller.host
+			if (/^\d{1,3}(\.\d{1,3}){3}$/.test(controllerHost) && rinfo.address !== controllerHost) {
+				this.logger.warn(`Received message for sequence number (${seq}) from unexpected source ${rinfo.address}:${rinfo.port}, expected ${controllerHost}`)
+				return
+			}
+
+			const responseChecksum = msg[msg.length - 1]
+			const expectedChecksum = this.checksumBuffer(msg.subarray(0, msg.length - 1))
+			if (responseChecksum !== expectedChecksum) {
+				this.logger.warn(`Received message with invalid checksum: expected ${expectedChecksum} received ${responseChecksum} from ${rinfo.address}:${rinfo.port}`)
+				return
+			}
+
+			const expectedLength = 4 + dataLength // type + seq + len + data + checksum
+			if (msg.length !== expectedLength) {
+				this.logger.warn(`Received message with length mismatch: expected ${expectedLength} received ${msg.length} from ${rinfo.address}:${rinfo.port}`)
+				return
+			}
+
 			delete this.requestsBySeq[seq]
 
 			if (request.timeout) {
@@ -125,19 +144,6 @@ export class ZenProtocol {
 			}
 
 			this.finishActiveRequest(request.controller)
-
-			const responseChecksum = msg[msg.length - 1]
-			const expectedChecksum = this.checksumBuffer(msg.subarray(0, msg.length - 1))
-			if (responseChecksum !== expectedChecksum) {
-				request.reject(new ZenResponseError(`Invalid checksum: expected ${expectedChecksum} received ${responseChecksum} from ${rinfo.address}:${rinfo.port}`))
-				return
-			}
-
-			const expectedLength = 4 + dataLength // type + seq + len + data + checksum
-			if (msg.length !== expectedLength) {
-				request.reject(new ZenResponseError(`Length mismatch: expected ${expectedLength} received ${msg.length} from ${rinfo.address}:${rinfo.port}`))
-				return
-			}
 
 			if (dataLength) {
 				const responseData = msg.subarray(3, msg.length - 1)
