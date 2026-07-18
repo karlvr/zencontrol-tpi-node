@@ -1372,8 +1372,9 @@ export class ZenProtocol {
 		return !!(await this.sendBasicFrame(controller, 'SET_SYSTEM_VARIABLE', variable, [0, ...buffer], 'ok'))
 	}
 
-	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (0-65534) if successful
-	 * and if the variable has a value, else `null`. */
+	/** Query the controller for the value of a system variable (0-147). Returns the variable's value (-32768-32767) if successful
+	 * and if the variable has a value, else `null`. Note that a value of -1 (0xFFFF) is indistinguishable from an unset
+	 * variable in this legacy command, and is also read as `null`. */
 	async querySystemVariable(controller: ZenController, variable: number): Promise<number | null> {
 		if (variable < 0 || variable > ZenConst.MAX_SYSVAR) {
 			throw new Error(`Variable number must be between 0 and ${ZenConst.MAX_SYSVAR}, received ${variable}`)
@@ -1381,9 +1382,10 @@ export class ZenProtocol {
 
 		const response = await this.sendBasicFrame(controller, 'QUERY_SYSTEM_VARIABLE', variable, [], 'bytes')
 		if (response && response.length === 2) {
-			const result = (response[0] << 8) | (response[1] & 0xff)
-			if (result !== 65535) {
-				return result
+			const raw = (response[0] << 8) | (response[1] & 0xff)
+			if (raw !== 65535) {
+				/* System variables are signed, see https://support.zencontrol.com/hc/en-us/articles/360000741316-What-is-a-system-address-variable */
+				return response.readInt16BE(0)
 			} else {
 				/* 65535 represents an unused system variable in this legacy API, see https://support.zencontrol.com/hc/en-us/articles/360000741316-What-is-a-system-address-variable */
 				return null
