@@ -137,7 +137,8 @@ export class ZenColour {
 		case ZenColourType.TC:
 			if (bytes.length === 3 || bytes.length === 7) {
 				const kelvin = (bytes[1] << 8) | bytes[2]
-				return new ZenColour({ type, kelvin })
+				/* 0xFFFF means "no value / leave at current value", mirroring toBytes */
+				return new ZenColour({ type, kelvin: kelvin === 0xffff ? undefined : kelvin })
 			}
 			throw new Error(`Invalid tuneable white colour of length ${bytes.length}, expected 3 or 7 bytes`)
 		case ZenColourType.XY:
