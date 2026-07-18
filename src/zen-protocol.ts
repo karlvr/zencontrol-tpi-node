@@ -1722,7 +1722,7 @@ export class ZenProtocol {
 		case ZenEventType.GROUP_OCCUPANCY_EVENT:
 			// A sensor targeting a group has detected motion
 			if (this.groupOccupancyCallback) {
-				const address = new ZenAddress(controller, ZenAddressType.GROUP, target)
+				const address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
 				try {
 					this.groupOccupancyCallback(address, payload[1] !== 0)
 				} catch (error) {
