@@ -189,12 +189,14 @@ export class ZenProtocol {
 		
 		this.activeRequests[controller.id]++
 
-		let seq = this.nextSeq++ % 256
+		let seq = this.nextSeq
+		this.nextSeq = (this.nextSeq + 1) % 256
 		let seqLoops = 0
 		const originalSeq = seq
-		
+
 		while (this.requestsBySeq[seq]) {
-			seq = this.nextSeq++ % 256
+			seq = this.nextSeq
+			this.nextSeq = (this.nextSeq + 1) % 256
 			if (seq === originalSeq) {
 				seqLoops++
 
@@ -233,8 +235,8 @@ export class ZenProtocol {
 					reject(err)
 				} else {
 					const timeout = () => {
-						if (!this.requestsBySeq[seq]) {
-							return /* Response already received */
+						if (this.requestsBySeq[seq] !== req) {
+							return /* Response already received, or sequence number reused by another request */
 						}
 
 						retries++
