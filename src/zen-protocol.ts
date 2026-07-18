@@ -1716,7 +1716,11 @@ export class ZenProtocol {
 			// Profile Change - The active profile on the controller has changed	
 			if (this.profileChangeCallback) {
 				const profile = (payload[0] & 0xff) << 8 | (payload[1] & 0xff)
-				this.profileChangeCallback(controller, profile)
+				try {
+					this.profileChangeCallback(controller, profile)
+				} catch (error) {
+					this.logger.warn(`Change callback failed for profile change event from ${rinfo.address}:${rinfo.port} for profile ${profile}: ${error instanceof Error ? error.message : error}`)
+				}
 			}
 			break
 		case ZenEventType.GROUP_OCCUPANCY_EVENT:
