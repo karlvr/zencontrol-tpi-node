@@ -63,7 +63,10 @@ export class ZenColour {
 		g -= w
 		b -= w
 
-		const intensity_factor = 0.3
+		/* Scale the amber/far-red boosts by chroma so that dark and desaturated
+		   colours (where the hue carries little or no meaning) don't switch on
+		   the amber or far-red channels */
+		const intensity_factor = 0.3 * s * v
 
 		let a: number
 		/* Amber boost for ~20°-50° */
