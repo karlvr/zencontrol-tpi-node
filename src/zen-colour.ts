@@ -283,7 +283,16 @@ export class ZenColour {
 	}
 
 	equals(other: ZenColour): boolean {
-		return JSON.stringify(this) === JSON.stringify(other)
+		return this.type === other.type
+			&& this.kelvin === other.kelvin
+			&& this.r === other.r
+			&& this.g === other.g
+			&& this.b === other.b
+			&& this.w === other.w
+			&& this.a === other.a
+			&& this.f === other.f
+			&& this.x === other.x
+			&& this.y === other.y
 	}
 }
 
