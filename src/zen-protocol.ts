@@ -488,7 +488,7 @@ export class ZenProtocol {
 	//         return (response[0] << 8) | response[1]
 	//     return None
 
-	/** Get the current TPI Event multicast emitter state for a controller. Returns `true` if enabled, `false` if disabled, `null` if query fails. */
+	/** Get the current TPI Event emitter state for a controller. Returns the active event mode flags, or `null` if the query fails. */
 	async queryTpiEventEmitState(controller: ZenController): Promise<ZenEventMode | null> {
 		const modeFlag = await this.sendBasicFrame(controller, 'QUERY_TPI_EVENT_EMIT_STATE', 0, [], 'int')
 		if (modeFlag !== null) {
