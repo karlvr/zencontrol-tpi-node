@@ -1697,8 +1697,8 @@ export class ZenProtocol {
 					address = new ZenAddress(controller, ZenAddressType.ECG, target)
 				} else if (target >= 64 && target <= 79) {
 					address = new ZenAddress(controller, ZenAddressType.GROUP, target - 64)
-				} else if (target >= 127 && target <= 143) {
-					address = new ZenAddress(controller, ZenAddressType.GROUP, target)
+				} else if (target >= 128 && target <= 143) {
+					address = new ZenAddress(controller, ZenAddressType.GROUP, target - 128)
 					this.logger.warn(`Colour change callback received with target=${target}. Assumed to be group ${target - 128}.`)
 				} else {
 					this.logger.warn(`Colour change callback received with unsupported target: ${target}`)
