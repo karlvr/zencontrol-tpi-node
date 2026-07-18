@@ -887,10 +887,18 @@ export class ZenProtocol {
 			}
 			
 			socket.bind(ZenConst.MULTICAST_PORT, () => {
-				if (this.listenIp && this.listenIp !== '0.0.0.0') {
-					socket.addMembership(ZenConst.MULTICAST_GROUP, this.listenIp)
-				} else {
-					socket.addMembership(ZenConst.MULTICAST_GROUP)
+				try {
+					if (this.listenIp && this.listenIp !== '0.0.0.0') {
+						socket.addMembership(ZenConst.MULTICAST_GROUP, this.listenIp)
+					} else {
+						socket.addMembership(ZenConst.MULTICAST_GROUP)
+					}
+				} catch (error) {
+					/* Throwing from a bind callback would crash the process; close the
+					   socket instead so the close handler schedules a restart with backoff */
+					this.logger.warn(`Failed to join multicast group ${ZenConst.MULTICAST_GROUP}: ${error instanceof Error ? error.message : error}`)
+					socket.close()
+					return
 				}
 
 				setupControllers().catch((reason) => {
