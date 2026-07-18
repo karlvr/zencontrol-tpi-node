@@ -20,6 +20,22 @@ describe('ZenColour TC (tuneable white)', () => {
 		const colour = new ZenColour({ type: ZenColourType.TC, kelvin: 25000 })
 		expect(colour.kelvin).toBe(20000)
 	})
+
+	it('serialises an unset kelvin as 0xFFFF (leave at current value)', () => {
+		const colour = new ZenColour({ type: ZenColourType.TC })
+		expect(Array.from(colour.toBytes().subarray(0, 3))).toEqual([0x20, 0xff, 0xff])
+	})
+
+	it('decodes a kelvin of 0xFFFF as unset rather than a concrete temperature', () => {
+		const colour = ZenColour.fromBytes(Buffer.from([0x20, 0xff, 0xff]))
+		expect(colour.kelvin).toBeUndefined()
+	})
+
+	it('round-trips an unset kelvin through toBytes/fromBytes', () => {
+		const colour = new ZenColour({ type: ZenColourType.TC })
+		const roundTripped = ZenColour.fromBytes(colour.toBytes())
+		expect(roundTripped.kelvin).toBeUndefined()
+	})
 })
 
 describe('ZenColour XY', () => {
@@ -76,6 +92,26 @@ describe('ZenColour equals', () => {
 		const a = new ZenColour({ type: ZenColourType.XY, x: 100, y: 100 })
 		const b = new ZenColour({ type: ZenColourType.TC, kelvin: 4000 })
 		expect(a.equals(b)).toBe(false)
+	})
+})
+
+describe('ZenColour fromHsv chroma scaling', () => {
+	it('produces all-zero channels for black', () => {
+		const colour = ZenColour.fromHsv(0, 0, 0)
+		expect([colour.r, colour.g, colour.b, colour.w, colour.a, colour.f]).toEqual([0, 0, 0, 0, 0, 0])
+	})
+
+	it('does not light amber or far-red for greys, regardless of hue', () => {
+		for (const hue of [0, 35, 350]) {
+			const colour = ZenColour.fromHsv(hue, 0, 0.5)
+			expect(colour.a).toBe(0)
+			expect(colour.f).toBe(0)
+		}
+	})
+
+	it('still applies the boosts for saturated colours in the boost hue ranges', () => {
+		expect(ZenColour.fromHsv(35, 1, 1).a).toBeGreaterThan(0)
+		expect(ZenColour.fromHsv(0, 1, 1).f).toBeGreaterThan(0)
 	})
 })
 
