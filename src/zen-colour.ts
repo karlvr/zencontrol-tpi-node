@@ -149,33 +149,40 @@ export class ZenColour {
 	}
 
 	/**
-	 * Convert this colour into bytes. Note that 0xff indicates an unused byte so
-	 * we clamp intentional values to 0xfe.
+	 * Convert this colour into bytes. 16-bit values (kelvin, x, y) are clamped
+	 * to 0xFFFE as a whole since 0xFFFF indicates "leave at current value".
+	 * RGBWAF channels are single bytes clamped to 0xFE since 0xFF indicates
+	 * an unused/unchanged channel.
 	 */
 	toBytes(): Buffer {
 		switch (this.type) {
-		case ZenColourType.TC:
+		case ZenColourType.TC: {
+			const kelvin = Math.min(0xfffe, this.kelvin!)
 			return Buffer.from([
 				0x20,
-				Math.min(0xfe, (this.kelvin! >> 8) & 0xff), Math.min(0xfe, this.kelvin! & 0xff),
+				(kelvin >> 8) & 0xff, kelvin & 0xff,
 				// Use 0xFF for any unused bytes.
 				0xff, 0xff,
 				0xff, 0xff,
 			])
+		}
 		case ZenColourType.RGBWAF:
 			return Buffer.from([
 				0x80,
 				Math.min(0xfe, this.r ?? 0), Math.min(0xfe, this.g ?? 0), Math.min(0xfe, this.b ?? 0),
 				Math.min(0xfe, this.w ?? 0), Math.min(0xfe, this.a ?? 0), Math.min(0xfe, this.f ?? 0),
 			])
-		case ZenColourType.XY:
+		case ZenColourType.XY: {
+			const x = Math.min(0xfffe, this.x ?? 0)
+			const y = Math.min(0xfffe, this.y ?? 0)
 			return Buffer.from([
 				0x10,
-				Math.min(0xfe, ((this.x ?? 0) >> 8) & 0xff), Math.min(0xfe, (this.x ?? 0) & 0xff),
-				Math.min(0xfe, ((this.y ?? 0) >> 8) & 0xff), Math.min(0xfe, (this.y ?? 0) & 0xff),
+				(x >> 8) & 0xff, x & 0xff,
+				(y >> 8) & 0xff, y & 0xff,
 				// Use 0xFF for any unused bytes.
 				0xff, 0xff,
 			])
+		}
 		default:
 			return Buffer.alloc(0)
 		}
