@@ -1529,7 +1529,11 @@ export class ZenProtocol {
 		if (this.checkEventMonitoringInterval) {
 			clearInterval(this.checkEventMonitoringInterval)
 		}
-		this.checkEventMonitoringInterval = setInterval(this._checkEventMonitoring.bind(this), 1000 * 60 * 10)
+		this.checkEventMonitoringInterval = setInterval(() => {
+			this._checkEventMonitoring().catch((error) => {
+				this.logger.warn(`Event monitoring health check failed: ${error instanceof Error ? error.message : error}`)
+			})
+		}, 1000 * 60 * 10)
 	}
 
 	async stopEventMonitoring(): Promise<void> {
@@ -1556,14 +1560,16 @@ export class ZenProtocol {
 	}
 
 	private async _checkEventMonitoring() {
-		const states = await Promise.all(this.controllers.map(controller => this.queryTpiEventEmitState(controller)))
+		const states = await Promise.all(this.controllers.map(controller => this.queryTpiEventEmitState(controller).catch(() => null)))
 
 		const expectMulticast = !this.unicast
 
 		const problem = states.find(state => state === null || !state.enabled || (expectMulticast && state.multicast !== expectMulticast) || (this.unicast && !state.unicast))
 		if (problem) {
 			this.logger.info('Restarting event monitoring as check reveals controller emit state has changed')
-			this.startEventMonitoring()
+			this.startEventMonitoring().catch((error) => {
+				this.logger.warn(`Failed to restart event monitoring: ${error instanceof Error ? error.message : error}`)
+			})
 		} else {
 			this.logger.debug('Checked controller event monitoring states: OK')
 		}
@@ -1572,7 +1578,9 @@ export class ZenProtocol {
 	private _handleEventClose(): void {
 		if (this.eventSocket) {
 			this.logger.info('Restarting event monitoring as the event socket closed unexpectedly')
-			this.startEventMonitoring()
+			this.startEventMonitoring().catch((error) => {
+				this.logger.warn(`Failed to restart event monitoring: ${error instanceof Error ? error.message : error}`)
+			})
 		}
 	}
 
