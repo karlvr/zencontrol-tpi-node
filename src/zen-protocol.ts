@@ -9,7 +9,7 @@ import { ZenConst } from './zen-const.js'
 import { ZenEventMask, ZenEventMode, ZenEventType } from './zen-events.js'
 import { ZenScene } from './zen-scene.js'
 import { ZenControlGearType } from './zen-gear.js'
-import { hostAddressFor } from './networking.js'
+import { hostAddressFor, isIpv4Address } from './networking.js'
 
 interface Logger {
 	debug: (message: string) => void
@@ -119,7 +119,7 @@ export class ZenProtocol {
 			}
 
 			const controllerHost = request.controller.host
-			if (/^\d{1,3}(\.\d{1,3}){3}$/.test(controllerHost) && rinfo.address !== controllerHost) {
+			if (isIpv4Address(controllerHost) && rinfo.address !== controllerHost) {
 				this.logger.warn(`Received message for sequence number (${seq}) from unexpected source ${rinfo.address}:${rinfo.port}, expected ${controllerHost}`)
 				return
 			}
@@ -484,10 +484,10 @@ export class ZenProtocol {
 				throw new Error('Port must be between 0 and 65535')
 			}
 
-			const octets = ipaddr.split('.').map(str => Number(str))
-			if (octets.length !== 4 || octets.some(octet => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+			if (!isIpv4Address(ipaddr)) {
 				throw new Error(`Address must be an IPv4 dotted-quad address, received ${ipaddr}`)
 			}
+			const octets = ipaddr.split('.').map(str => Number(str))
 
 			// Split port into upper and lower bytes
 			const portUpper = (port >> 8) & 0xff
