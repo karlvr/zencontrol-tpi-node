@@ -953,7 +953,7 @@ export class ZenProtocol {
 
 		const expectMulticast = !this.unicast
 
-		const problem = states.find(state => state === null || !state.enabled || (expectMulticast && state.multicast !== expectMulticast) || (this.unicast && !state.unicast))
+		const problem = states.some(state => state === null || !state.enabled || (expectMulticast && state.multicast !== expectMulticast) || (this.unicast && !state.unicast))
 		if (problem) {
 			this.logger.info('Restarting event monitoring as check reveals controller emit state has changed')
 			this.startEventMonitoring().catch((error) => {
