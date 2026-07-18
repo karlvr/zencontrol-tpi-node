@@ -1516,7 +1516,11 @@ export class ZenProtocol {
 			}
 			
 			socket.bind(ZenConst.MULTICAST_PORT, () => {
-				socket.addMembership(ZenConst.MULTICAST_GROUP)
+				if (this.listenIp && this.listenIp !== '0.0.0.0') {
+					socket.addMembership(ZenConst.MULTICAST_GROUP, this.listenIp)
+				} else {
+					socket.addMembership(ZenConst.MULTICAST_GROUP)
+				}
 
 				setupControllers().catch((reason) => {
 					this.logger.warn(`Failed to setup controllers for multicast: ${reason}`)
