@@ -1,6 +1,4 @@
 import dgram, { RemoteInfo } from 'node:dgram'
-import os from 'node:os'
-import { log, warn } from 'node:console'
 import { CMD, ZenCommand } from './zen-commands.js'
 import { ZenError, ZenErrorCode, ZenResponseError, ZenTimeoutError } from './zen-errors.js'
 import { ZenController } from './zen-controller.js'
