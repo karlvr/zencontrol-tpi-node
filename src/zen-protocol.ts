@@ -269,7 +269,10 @@ export class ZenProtocol {
 						}
 					}
 
-					req.timeout = setTimeout(timeout, this.responseTimeout)
+					/* If the event loop stalls, a response can wait unread in the socket buffer while
+					   this timer expires. setImmediate runs after the next poll phase, which delivers
+					   that response, so a late response is matched instead of causing a retry */
+					req.timeout = setTimeout(() => setImmediate(timeout), this.responseTimeout)
 				}
 			}
 			
