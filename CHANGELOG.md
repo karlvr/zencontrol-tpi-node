@@ -1,5 +1,11 @@
 # zencontrol-tpi-node
 
+## 1.3.1
+
+### Patch Changes
+
+- c58d9ab: Requests are no longer resent after an event-loop stall when their response has already arrived. Previously the retry timer ran before the waiting response was read, so the controller answered twice and the duplicate logged "Received message with unknown sequence number"
+
 ## 1.3.0
 
 ### Minor Changes
